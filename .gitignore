@@ -36,6 +36,15 @@
 *.x86_64
 *.hex
 
+# Build Files
+obj/
+
+# Log Files
+*.log
+
+# VS Code Settings
+.vscode/settings.json
+
 # Debug files
 *.dSYM/
 *.su

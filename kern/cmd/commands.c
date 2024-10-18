@@ -18,6 +18,7 @@
 #include "../mem/memory_manager.h"
 #include "../tests/tst_handler.h"
 #include "../tests/utilities.h"
+#include "../../inc/dynamic_allocator.h"
 
 
 //Array of commands. (initialized)
@@ -53,6 +54,7 @@ struct Command commands[] =
 		{"nomodbuff", "disable modified buffer", command_disable_modified_buffer, 0},
 		{"modbuff", "enable modified buffer", command_enable_modified_buffer, 0},
 		{"modbufflength?", "get modified buffer length", command_get_modified_buffer_length, 0},
+		{"TST", "", custom_tst, 0},
 
 		//*****************************//
 		/* COMMANDS WITH ONE ARGUMENT */
@@ -348,6 +350,12 @@ int command_meminfo(int number_of_arguments, char **arguments)
 			counters.freeBuffered+ counters.freeNotBuffered+ counters.modified, counters.freeBuffered, counters.freeNotBuffered, counters.modified);
 
 	cprintf("Num of calls for kheap_virtual_address [in last run] = %d\n", numOfKheapVACalls);
+
+	return 0;
+}
+
+int custom_tst(int number_of_arguments, char **arguments)
+{
 
 	return 0;
 }

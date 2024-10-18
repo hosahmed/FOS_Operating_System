@@ -130,20 +130,19 @@ void set_block_data(void* va, uint32 totalSize, bool isAllocated)
     //TODO: [PROJECT'24.MS1 - #05] [3] DYNAMIC ALLOCATOR - set_block_data
     //COMMENT THE FOLLOWING LINE BEFORE START CODING
     //panic("set_block_data is not implemented yet");
+    //Your Code is Here...
 
 	if(totalSize < 8 || totalSize % 2 != 0) {
-		cprintf("Invalid Size Please Try again and GIT GUD");
+		cprintf("Invalid Size");
 		return;
 	}
 
     uint32 *address=(uint32*)va;
     address--;
-    *address= totalSize + isAllocated;
-
-    void *ptr_move = va;
-    ptr_move += (totalSize - 2*sizeof(uint32));
-    address = (uint32*)ptr_move;
-    *address = totalSize + isAllocated;
+    *address=totalSize+isAllocated;
+    address=address+totalSize;
+    address--;
+    *address=totalSize+isAllocated;
 }
 
 

@@ -131,17 +131,13 @@ void set_block_data(void* va, uint32 totalSize, bool isAllocated)
     //COMMENT THE FOLLOWING LINE BEFORE START CODING
     //panic("set_block_data is not implemented yet");
 
-	if(totalSize < 8 || totalSize % 2 != 0) {
-		cprintf("Invalid Size");
-		return;
-	}
-
-    uint32 *address=(uint32*)va;
-    address--;
-    *address=totalSize+isAllocated;
-    address=address+totalSize;
-    address--;
-    *address=totalSize+isAllocated;
+	    uint32 *address=(uint32*)va;
+	    address--;
+	    *address= totalSize + isAllocated;
+	    void *ptr_move = (void*)va;
+	    ptr_move += (totalSize - 2*sizeof(uint32));
+	    address = (uint32*)ptr_move;
+	    *address = totalSize + isAllocated;
 }
 
 
@@ -170,8 +166,37 @@ void *alloc_block_FF(uint32 size)
 
 	//TODO: [PROJECT'24.MS1 - #06] [3] DYNAMIC ALLOCATOR - alloc_block_FF
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("alloc_block_FF is not implemented yet");
-	//Your Code is Here...
+//	panic("alloc_block_FF is not implemented yet");
+
+	if(size == 0)
+	    return NULL;
+
+	struct BlockElement *element;
+	LIST_FOREACH(element, &(freeBlocksList))
+	{
+	    if(get_block_size(element) >= size + 2 * sizeof(int))
+	    {
+	        if(get_block_size(element) - size - 2 * sizeof(int) >= 16) {
+	            struct BlockElement* new_free_block = (struct BlockElement*)((void*)element + size + 2*sizeof(int));
+	            LIST_INSERT_AFTER(&(freeBlocksList), element, new_free_block);
+	            set_block_data(new_free_block, get_block_size(element) - size - 2*sizeof(int), 0);
+	            set_block_data(element, size + 2 * sizeof(int), 1);
+	            LIST_REMOVE(&(freeBlocksList), element);
+	        }
+	        else
+	        {
+	            set_block_data(element, get_block_size(element), 1);
+	            LIST_REMOVE(&(freeBlocksList), element);
+	        }
+
+	        return (void*)element;
+	    }
+	}
+
+	if(sbrk(LIST_SIZE(&(freeBlocksList))) == (void*)-1)
+	    return NULL;
+
+	return sbrk(LIST_SIZE(&(freeBlocksList)));
 
 }
 //=========================================

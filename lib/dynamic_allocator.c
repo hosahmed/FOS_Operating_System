@@ -174,13 +174,13 @@ void *alloc_block_FF(uint32 size)
 	struct BlockElement *element;
 	LIST_FOREACH(element, &(freeBlocksList))
 	{
-	    if(get_block_size(element) >= size + 2 * sizeof(int))
+	    if(get_block_size(element) >= size + 2*sizeof(int))
 	    {
-	        if(get_block_size(element) - size - 2 * sizeof(int) >= 16) {
+	        if(get_block_size(element) - size - 2*sizeof(int) >= 16) {
 	            struct BlockElement* new_free_block = (struct BlockElement*)((void*)element + size + 2*sizeof(int));
 	            LIST_INSERT_AFTER(&(freeBlocksList), element, new_free_block);
 	            set_block_data(new_free_block, get_block_size(element) - size - 2*sizeof(int), 0);
-	            set_block_data(element, size + 2 * sizeof(int), 1);
+	            set_block_data(element, size + 2*sizeof(int), 1);
 	            LIST_REMOVE(&(freeBlocksList), element);
 	        }
 	        else
@@ -206,9 +206,49 @@ void *alloc_block_BF(uint32 size)
 {
 	//TODO: [PROJECT'24.MS1 - BONUS] [3] DYNAMIC ALLOCATOR - alloc_block_BF
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("alloc_block_BF is not implemented yet");
-	//Your Code is Here...
+	//panic("alloc_block_BF is not implemented yet");
 
+	if(size == 0)
+		    return NULL;
+
+	int bestSizeDiff = -1;
+	void* address;
+
+	bool possibleAllocation = 0;
+	struct BlockElement *element;
+	LIST_FOREACH(element, &(freeBlocksList))
+	{
+		if(get_block_size(element) >= size + 2*sizeof(int))
+		{
+			possibleAllocation = 1;
+			if(get_block_size(element) - size - 2*sizeof(int) < bestSizeDiff || bestSizeDiff == -1) {
+				bestSizeDiff = get_block_size(element) - size - 2*sizeof(int);
+				address = (void*) element;
+			}
+		}
+	}
+
+	if(possibleAllocation) {
+		if(get_block_size(address) - size - 2*sizeof(int) >= 16) {
+			struct BlockElement* new_free_block = (struct BlockElement*)((void*)address + size + 2*sizeof(int));
+			LIST_INSERT_AFTER(&(freeBlocksList), (struct BlockElement *)address, new_free_block);
+			set_block_data(new_free_block, get_block_size(address) - size - 2*sizeof(int), 0);
+			set_block_data(address, size + 2 * sizeof(int), 1);
+			LIST_REMOVE(&(freeBlocksList), (struct BlockElement *)address);
+		}
+		else
+		{
+			set_block_data(address, get_block_size(address), 1);
+			LIST_REMOVE(&(freeBlocksList), (struct BlockElement *)address);
+		}
+
+		return (void*)address;
+	}
+
+	if(sbrk(LIST_SIZE(&(freeBlocksList))) == (void*)-1)
+		return NULL;
+
+	return sbrk(LIST_SIZE(&(freeBlocksList)));
 }
 
 //===================================================

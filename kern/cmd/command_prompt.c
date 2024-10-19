@@ -471,12 +471,6 @@ int process_command(int number_of_arguments, char** arguments) {
 		}
 		else if (strcmp(arguments[0], commands[i].name) == 0)
 		{
-			cprintf("%s\n",commands[i].name);
-			if(strcmp("run", commands[i].name)==0)
-			{
-				LIST_INSERT_HEAD(&foundCommands, &commands[i]);
-			}
-
 			LIST_INSERT_HEAD(&foundCommands, &commands[i]);
 			return CMD_INV_NUM_ARGS;
 

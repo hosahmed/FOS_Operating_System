@@ -57,7 +57,6 @@ int command_allocuserpage(int number_of_arguments, char **arguments);
 int command_meminfo(int number_of_arguments, char **arguments);
 int custom_tst(int number_of_arguments, char **arguments);
 
-
 int command_set_page_rep_FIFO(int number_of_arguments, char **arguments);
 int command_set_page_rep_CLOCK(int number_of_arguments, char **arguments);
 int command_set_page_rep_LRU(int number_of_arguments, char **arguments);

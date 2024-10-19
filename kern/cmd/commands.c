@@ -18,7 +18,6 @@
 #include "../mem/memory_manager.h"
 #include "../tests/tst_handler.h"
 #include "../tests/utilities.h"
-#include "../../inc/dynamic_allocator.h"
 
 
 //Array of commands. (initialized)
@@ -356,8 +355,6 @@ int command_meminfo(int number_of_arguments, char **arguments)
 
 int custom_tst(int number_of_arguments, char **arguments)
 {
-//	set_block_data((void*)0xf0000000,14,1);
-//	cprintf("Block size is %d", get_block_size((void*)0xf0000000));
 	return 0;
 }
 

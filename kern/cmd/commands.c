@@ -80,7 +80,7 @@ struct Command commands[] =
 		//**************************************//
 		/* COMMANDS WITH AT LEAST ONE ARGUMENT */
 		//**************************************//
-		{ "run", "runs a single user program", command_run_program, -1 },
+		{ "run", "runs a single user program", command_run_program, -1},
 		{ "wum", "writes one byte to specific location in kernel or a given environment" ,command_writeusermem, -1},
 		{ "rum", "reads one byte from specific location in kernel or a given environment" ,command_readusermem, -1},
 		{ "schedMLFQ", "switch the scheduler to MLFQ with given # queues & quantums", command_sch_MLFQ, -1},

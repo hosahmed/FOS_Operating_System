@@ -453,69 +453,77 @@ int execute_command(char *command_string)
 }
 
 
-//int process_command(int number_of_arguments, char** arguments) {
-//	//TODO: [PROJECT'24.MS1 - #01] [1] PLAY WITH CODE! - process_command
-//	bool Finished= 0;
-//	int foundCommands_size = LIST_SIZE(&foundCommands);
-//
-//	while(foundCommands_size!=0)
-//	{
-//		struct Command *element=  LIST_FIRST(&foundCommands);
-//		LIST_REMOVE(&(foundCommands), element);
-//		foundCommands_size--;
-//	}
-//	for (int i = 0; i < NUM_OF_COMMANDS; i++) {
-//		if (strcmp(arguments[0], commands[i].name) == 0 && number_of_arguments - 1 == commands[i].num_of_args) {
-//			return i;
-//		} else if (strcmp(arguments[0], commands[i].name) == 0)
-//		{
-//			LIST_INSERT_TAIL(&foundCommands, &commands[i]);
-//			return CMD_INV_NUM_ARGS;
-//
-//		} else if (strchr(commands[i].name, arguments[0][0]) != NULL) {
-//			int size_of_first_args = strlen(arguments[0]);
-//			bool IS_Found = 1;
-//
-//			for (int j = 1; j < size_of_first_args; j++)
-//					{
-//					char *ptr_to_prev= strchr(commands[i].name, arguments[0][j-1]);
-//					int indx_prev= (int)(ptr_to_prev - commands[i].name);
-//					char *ptr= strchr(commands[i].name, arguments[0][j]);
-//					int indx=(int)(ptr - commands[i].name);
-//					if (strchr(commands[i].name, arguments[0][j])==NULL || indx_prev >= indx) {
-//						IS_Found = 0;
-//						break;
-//					}
-//
-//			}
-//
-//			if (IS_Found == 1)
-//			{
-//				LIST_INSERT_HEAD(&foundCommands, &commands[i]);
-//				Finished=1;
-//			}
-//
-//		}
-//	}
-//	if(Finished==1)
-//	{
-//		Finished=0;
-//		return CMD_MATCHED;
-//	}
-//	else
-//	{
-//
-//		return CMD_INVALID;
-//	}
-//
-//}
-
 int process_command(int number_of_arguments, char** arguments) {
 	//TODO: [PROJECT'24.MS1 - #01] [1] PLAY WITH CODE! - process_command
-	for (int i = 0; i < NUM_OF_COMMANDS; i++) {
-	            if (strcmp(arguments[0], commands[i].name) == 0) {
-	                return i;
-	            }
+	bool Finished= 0;
+	int foundCommands_size = LIST_SIZE(&foundCommands);
+
+	while(foundCommands_size!=0)
+	{
+		struct Command *element=  LIST_FIRST(&foundCommands);
+		LIST_REMOVE(&(foundCommands), element);
+		foundCommands_size--;
 	}
-	return CMD_INVALID;
+	for (int i = 0; i < NUM_OF_COMMANDS; i++) {
+		if (strcmp(arguments[0], commands[i].name) == 0 && (number_of_arguments - 1 == commands[i].num_of_args || (commands[i].num_of_args ==-1 && number_of_arguments-1>=1)))
+		{
+			return i;
+		}
+		else if (strcmp(arguments[0], commands[i].name) == 0)
+		{
+			cprintf("%s\n",commands[i].name);
+			if(strcmp("run", commands[i].name)==0)
+			{
+				LIST_INSERT_HEAD(&foundCommands, &commands[i]);
+			}
+
+			LIST_INSERT_HEAD(&foundCommands, &commands[i]);
+			return CMD_INV_NUM_ARGS;
+
+		} else if (strchr(commands[i].name, arguments[0][0]) != NULL) {
+			int size_of_first_args = strlen(arguments[0]);
+			bool IS_Found = 1;
+
+			for (int j = 1; j < size_of_first_args; j++)
+					{
+					char *ptr_to_prev= strchr(commands[i].name, arguments[0][j-1]);
+					int indx_prev= (int)(ptr_to_prev - commands[i].name);
+					char *ptr= strchr(commands[i].name, arguments[0][j]);
+					int indx=(int)(ptr - commands[i].name);
+					if (strchr(commands[i].name, arguments[0][j])==NULL || indx_prev >= indx) {
+						IS_Found = 0;
+						break;
+					}
+
+			}
+
+			if (IS_Found == 1)
+			{
+				LIST_INSERT_HEAD(&foundCommands, &commands[i]);
+				Finished=1;
+			}
+
+		}
+	}
+	if(Finished==1)
+	{
+		Finished=0;
+		return CMD_MATCHED;
+	}
+	else
+	{
+
+		return CMD_INVALID;
+	}
+
 }
+
+//int process_command(int number_of_arguments, char** arguments) {
+//	//TODO: [PROJECT'24.MS1 - #01] [1] PLAY WITH CODE! - process_command
+//	for (int i = 0; i < NUM_OF_COMMANDS; i++) {
+//	            if (strcmp(arguments[0], commands[i].name) == 0) {
+//	                return i;
+//	            }
+//	}
+//	return CMD_INVALID;
+//}

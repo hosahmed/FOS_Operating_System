@@ -47,6 +47,9 @@ enum
 	SYS_check_LRU_lists_free,
 	SYS_check_WS_list,
 	SYS_utilities,
+	SYS_sbrk,
+	Sys_allocate_user_mem,
+	Sys_free_user_mem,
 	/*2024*/
 	//TODO: [PROJECT'24.MS1 - #02] [2] SYSTEM CALLS - Add suitable code here
 

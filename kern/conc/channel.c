@@ -82,7 +82,7 @@ void wakeup_all(struct Channel *chan)
 
 	acquire_spinlock(&(ProcessQueues.qlock));
 
-	while(chan->queue != NULL)
+	while(chan->queue.size != 0)
 	{
 		struct Env* Blocked_process = dequeue(&(chan->queue));
 		sched_insert_ready0(Blocked_process);

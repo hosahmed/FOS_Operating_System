@@ -242,147 +242,147 @@ void test_alloc_block_FF()
 	cprintf("=======================================================\n") ;
 	eval = test_initial_alloc(DA_FF);
 
-//	cprintf("====================================================\n") ;
-//	cprintf("SECOND: Tests depend on BOTH Allocate and Free [60%] \n") ;
-//	cprintf("====================================================\n") ;
-//
-//	//Free set of blocks with different sizes (first block of each size)
-//	for (int i = 0; i < numOfAllocs; ++i)
-//	{
-//		free_block(startVAs[i*allocCntPerSize]);
-//	}
-//	//Check number of freed blocks
-//	is_correct = check_list_size(numOfAllocs);
-//	if (is_correct)
-//	{
-//		eval += 10;
-//	}
-//	//====================================================================//
-//	/*FF ALLOC Scenario 1: Try to allocate a block with a size greater than the size of any existing free block*/
-//	cprintf("	1: Try to allocate large block [not fit in any space]\n\n") ;
-//	is_correct = 1;
-//
-//	uint32 maxSize = 0 ;
-//	for (int i = 0; i < numOfAllocs; ++i)
-//	{
-//		if (allocSizes[i] > maxSize)
-//			maxSize = allocSizes[i] ;
-//	}
-//	va = alloc_block(maxSize, DA_FF);
-//
-//	//Check returned va
-//	if(va != NULL)
-//	{
-//		is_correct = 0;
-//		cprintf("alloc_block_FF #5: WRONG FF ALLOC - alloc_block_FF find a block instead no existing free blocks with the given size.\n");
-//	}
-//
-//	if (is_correct)
-//	{
-//		eval += 5;
-//	}
-//	//====================================================================//
-//	/*FF ALLOC Scenario 2: Try to allocate blocks with sizes smaller than existing free blocks*/
-//	cprintf("	2: Try to allocate set of blocks with different sizes smaller than existing free blocks\n\n") ;
-//	is_correct = 1;
-//	void* expectedVA;
-//	uint32 expectedNumFreeBlks;
-//#define numOfFFTests 3
-//	uint32 startVA = KERNEL_HEAP_START + sizeof(int); //just after the DA Begin block
-//	uint32 testSizes[numOfFFTests] = {1*kilo + kilo/2, 3*kilo, kilo/2} ;
-//	uint32 startOf1st7KB = (uint32)startVAs[6*allocCntPerSize];
-//	uint32 expectedVAs[numOfFFTests] = {startVA + sizeOfMetaData/2, startOf1st7KB, startVA + testSizes[0] + sizeOfMetaData/2};
-//	short* tstStartVAs[numOfFFTests+2] ;
-//	short* tstMidVAs[numOfFFTests+2] ;
-//	short* tstEndVAs[numOfFFTests+2] ;
-//	for (int i = 0; i < numOfFFTests; ++i)
-//	{
-//		actualSize = testSizes[i] - sizeOfMetaData;
-//		va = tstStartVAs[i] = alloc_block(actualSize, DA_FF);
-//		tstMidVAs[i] = va + actualSize/2 ;
-//		tstEndVAs[i] = va + actualSize - sizeof(short);
-//		//Check block
-//		cprintf("test#%d\n",i);
-//		expectedVA = (void*)expectedVAs[i];
-//		if (check_block(va, expectedVA, testSizes[i], 1) == 0)
-//		{
-//			is_correct = 0;
-//		}
-//		*(tstStartVAs[i]) = 353;
-//		*(tstMidVAs[i]) = 353;
-//		*(tstEndVAs[i]) = 353;
-//	}
-//	if (is_correct) is_correct = check_list_size(numOfAllocs);
-//	if (is_correct)
-//	{
-//		eval += 15;
-//	}
-//	//====================================================================//
-//	/*FF ALLOC Scenario 3: Try to allocate a block with a size equal to the size of the first existing free block*/
-//	cprintf("	3: Try to allocate a block with equal to the first existing free block\n\n") ;
-//	is_correct = 1;
-//
-//	actualSize = 2*kilo - sizeOfMetaData;
-//	va = tstStartVAs[numOfFFTests] = alloc_block(actualSize, DA_FF);
-//	tstMidVAs[numOfFFTests] = va + actualSize/2 ;
-//	tstEndVAs[numOfFFTests] = va + actualSize - sizeof(short);
-//	//Check block
-//	expectedVA = (void*)(startVA + testSizes[0] + testSizes[2] + sizeOfMetaData/2) ;
-//
-//	if (is_correct) is_correct = check_block(va, expectedVA, 2*kilo, 1);
-//	if (is_correct) is_correct = check_list_size(numOfAllocs - 1);
-//
-//	*(tstStartVAs[numOfFFTests]) = 353 ;
-//	*(tstMidVAs[numOfFFTests]) = 353 ;
-//	*(tstEndVAs[numOfFFTests]) = 353 ;
-//
-//	if (is_correct)
-//	{
-//		eval += 10;
-//	}
-//	//====================================================================//
-//	/*FF ALLOC Scenario 4: Try to allocate a block with a bit smaller size [internal fragmentation case]*/
-//	cprintf("	4: Try to allocate a block with a bit smaller size [internal fragmentation case]\n\n") ;
-//	is_correct = 1;
-//
-//	actualSize = allocSizes[1] - sizeOfMetaData - 10;
-//	va = tstStartVAs[numOfFFTests+1] = alloc_block(actualSize, DA_FF);
-//	tstMidVAs[numOfFFTests+1] = va + actualSize/2 ;
-//	tstEndVAs[numOfFFTests+1] = va + actualSize - sizeof(short);
-//	//Check block
-//	expectedVA = startVAs[1*allocCntPerSize];
-//
-//	if (is_correct) is_correct = check_block(va, expectedVA, allocSizes[1], 1);
-//	if (is_correct) is_correct = check_list_size(numOfAllocs - 2);
-//
-//	*(tstStartVAs[numOfFFTests+1]) = 353 ;
-//	*(tstMidVAs[numOfFFTests+1]) = 353 ;
-//	*(tstEndVAs[numOfFFTests+1]) = 353 ;
-//
-//	if (is_correct)
-//	{
-//		eval += 10;
-//	}
-//	//====================================================================//
-//	/*FF ALLOC Scenario 5: Check stored data inside each allocated block*/
-//	cprintf("	5: Check stored data inside each allocated block\n\n") ;
-//	is_correct = 1;
-//
-//	for (int i = 0; i < numOfFFTests + 2; ++i)
-//	{
-//		//cprintf("startVA = %x, mid = %x, last = %x\n", tstStartVAs[i], tstMidVAs[i], tstEndVAs[i]);
-//		if (*(tstStartVAs[i]) != 353 || *(tstMidVAs[i]) != 353 || *(tstEndVAs[i]) != 353)
-//		{
-//			is_correct = 0;
-//			cprintf("alloc_block_FF #8.%d: WRONG! content of the block is not correct. Expected=%d, val1=%d, val2=%d, val3=%d\n",i, 353, *(tstStartVAs[i]), *(tstMidVAs[i]), *(tstEndVAs[i]));
-//			break;
-//		}
-//	}
-//
-//	if (is_correct)
-//	{
-//		eval += 10;
-//	}
+	cprintf("====================================================\n") ;
+	cprintf("SECOND: Tests depend on BOTH Allocate and Free [60%] \n") ;
+	cprintf("====================================================\n") ;
+
+	//Free set of blocks with different sizes (first block of each size)
+	for (int i = 0; i < numOfAllocs; ++i)
+	{
+		free_block(startVAs[i*allocCntPerSize]);
+	}
+	//Check number of freed blocks
+	is_correct = check_list_size(numOfAllocs);
+	if (is_correct)
+	{
+		eval += 10;
+	}
+	//====================================================================//
+	/*FF ALLOC Scenario 1: Try to allocate a block with a size greater than the size of any existing free block*/
+	cprintf("	1: Try to allocate large block [not fit in any space]\n\n") ;
+	is_correct = 1;
+
+	uint32 maxSize = 0 ;
+	for (int i = 0; i < numOfAllocs; ++i)
+	{
+		if (allocSizes[i] > maxSize)
+			maxSize = allocSizes[i] ;
+	}
+	va = alloc_block(maxSize, DA_FF);
+
+	//Check returned va
+	if(va != NULL)
+	{
+		is_correct = 0;
+		cprintf("alloc_block_FF #5: WRONG FF ALLOC - alloc_block_FF find a block instead no existing free blocks with the given size.\n");
+	}
+
+	if (is_correct)
+	{
+		eval += 5;
+	}
+	//====================================================================//
+	/*FF ALLOC Scenario 2: Try to allocate blocks with sizes smaller than existing free blocks*/
+	cprintf("	2: Try to allocate set of blocks with different sizes smaller than existing free blocks\n\n") ;
+	is_correct = 1;
+	void* expectedVA;
+	uint32 expectedNumFreeBlks;
+#define numOfFFTests 3
+	uint32 startVA = KERNEL_HEAP_START + sizeof(int); //just after the DA Begin block
+	uint32 testSizes[numOfFFTests] = {1*kilo + kilo/2, 3*kilo, kilo/2} ;
+	uint32 startOf1st7KB = (uint32)startVAs[6*allocCntPerSize];
+	uint32 expectedVAs[numOfFFTests] = {startVA + sizeOfMetaData/2, startOf1st7KB, startVA + testSizes[0] + sizeOfMetaData/2};
+	short* tstStartVAs[numOfFFTests+2] ;
+	short* tstMidVAs[numOfFFTests+2] ;
+	short* tstEndVAs[numOfFFTests+2] ;
+	for (int i = 0; i < numOfFFTests; ++i)
+	{
+		actualSize = testSizes[i] - sizeOfMetaData;
+		va = tstStartVAs[i] = alloc_block(actualSize, DA_FF);
+		tstMidVAs[i] = va + actualSize/2 ;
+		tstEndVAs[i] = va + actualSize - sizeof(short);
+		//Check block
+		cprintf("test#%d\n",i);
+		expectedVA = (void*)expectedVAs[i];
+		if (check_block(va, expectedVA, testSizes[i], 1) == 0)
+		{
+			is_correct = 0;
+		}
+		*(tstStartVAs[i]) = 353;
+		*(tstMidVAs[i]) = 353;
+		*(tstEndVAs[i]) = 353;
+	}
+	if (is_correct) is_correct = check_list_size(numOfAllocs);
+	if (is_correct)
+	{
+		eval += 15;
+	}
+	//====================================================================//
+	/*FF ALLOC Scenario 3: Try to allocate a block with a size equal to the size of the first existing free block*/
+	cprintf("	3: Try to allocate a block with equal to the first existing free block\n\n") ;
+	is_correct = 1;
+
+	actualSize = 2*kilo - sizeOfMetaData;
+	va = tstStartVAs[numOfFFTests] = alloc_block(actualSize, DA_FF);
+	tstMidVAs[numOfFFTests] = va + actualSize/2 ;
+	tstEndVAs[numOfFFTests] = va + actualSize - sizeof(short);
+	//Check block
+	expectedVA = (void*)(startVA + testSizes[0] + testSizes[2] + sizeOfMetaData/2) ;
+
+	if (is_correct) is_correct = check_block(va, expectedVA, 2*kilo, 1);
+	if (is_correct) is_correct = check_list_size(numOfAllocs - 1);
+
+	*(tstStartVAs[numOfFFTests]) = 353 ;
+	*(tstMidVAs[numOfFFTests]) = 353 ;
+	*(tstEndVAs[numOfFFTests]) = 353 ;
+
+	if (is_correct)
+	{
+		eval += 10;
+	}
+	//====================================================================//
+	/*FF ALLOC Scenario 4: Try to allocate a block with a bit smaller size [internal fragmentation case]*/
+	cprintf("	4: Try to allocate a block with a bit smaller size [internal fragmentation case]\n\n") ;
+	is_correct = 1;
+
+	actualSize = allocSizes[1] - sizeOfMetaData - 10;
+	va = tstStartVAs[numOfFFTests+1] = alloc_block(actualSize, DA_FF);
+	tstMidVAs[numOfFFTests+1] = va + actualSize/2 ;
+	tstEndVAs[numOfFFTests+1] = va + actualSize - sizeof(short);
+	//Check block
+	expectedVA = startVAs[1*allocCntPerSize];
+
+	if (is_correct) is_correct = check_block(va, expectedVA, allocSizes[1], 1);
+	if (is_correct) is_correct = check_list_size(numOfAllocs - 2);
+
+	*(tstStartVAs[numOfFFTests+1]) = 353 ;
+	*(tstMidVAs[numOfFFTests+1]) = 353 ;
+	*(tstEndVAs[numOfFFTests+1]) = 353 ;
+
+	if (is_correct)
+	{
+		eval += 10;
+	}
+	//====================================================================//
+	/*FF ALLOC Scenario 5: Check stored data inside each allocated block*/
+	cprintf("	5: Check stored data inside each allocated block\n\n") ;
+	is_correct = 1;
+
+	for (int i = 0; i < numOfFFTests + 2; ++i)
+	{
+		//cprintf("startVA = %x, mid = %x, last = %x\n", tstStartVAs[i], tstMidVAs[i], tstEndVAs[i]);
+		if (*(tstStartVAs[i]) != 353 || *(tstMidVAs[i]) != 353 || *(tstEndVAs[i]) != 353)
+		{
+			is_correct = 0;
+			cprintf("alloc_block_FF #8.%d: WRONG! content of the block is not correct. Expected=%d, val1=%d, val2=%d, val3=%d\n",i, 353, *(tstStartVAs[i]), *(tstMidVAs[i]), *(tstEndVAs[i]));
+			break;
+		}
+	}
+
+	if (is_correct)
+	{
+		eval += 10;
+	}
 	cprintf("test alloc_block_FF completed. Evaluation = %d%\n", eval);
 }
 
@@ -403,155 +403,155 @@ void test_alloc_block_BF()
 	cprintf("=======================================================\n") ;
 	eval = test_initial_alloc(DA_BF);
 
-//	cprintf("====================================================\n") ;
-//	cprintf("SECOND: Tests depend on BOTH Allocate and Free [60%] \n") ;
-//	cprintf("====================================================\n") ;
-//	void* expectedVA;
-//	uint32 expectedNumFreeBlks;
-//	//Free set of blocks with different sizes (first block of each size)
-//	for (int i = 0; i < numOfAllocs; ++i)
-//	{
-//		free_block(startVAs[i*allocCntPerSize]);
-//	}
-//	//Check number of freed blocks
-//	is_correct = check_list_size(numOfAllocs);
-//	if (is_correct)
-//	{
-//		eval += 10;
-//	}
-//	//====================================================================//
-//	/*BF ALLOC Scenario 1: Try to allocate a block with a size greater than the size of any existing free block*/
-//	cprintf("	1: Try to allocate large block [not fit in any space]\n\n") ;
-//	is_correct = 1;
-//
-//	uint32 maxSize = 0 ;
-//	for (int i = 0; i < numOfAllocs; ++i)
-//	{
-//		if (allocSizes[i] > maxSize)
-//			maxSize = allocSizes[i] ;
-//	}
-//	va = alloc_block(maxSize, DA_BF);
-//
-//	//Check returned va
-//	if(va != NULL)
-//	{
-//		is_correct = 0;
-//		cprintf("alloc_block_BF #5: WRONG BF ALLOC - alloc_block_BF find a block instead no existing free blocks with the given size.\n");
-//	}
-//	if (is_correct)
-//	{
-//		eval += 5;
-//	}
-//	//====================================================================//
-//	/*BF ALLOC Scenario 2: Try to allocate blocks with sizes smaller than existing free blocks*/
-//	cprintf("	2: Try to allocate set of blocks with different sizes smaller than existing free blocks\n\n") ;
-//	is_correct = 1;
-//
-//#define numOfBFTests 5
-//	uint32 testSizes[numOfBFTests] = {
-//			/*only 1 can fit*/4*kilo + kilo/2,
-//			/*many can fit*/ 1*kilo + kilo/4,
-//			/*many can fit*/kilo/2,
-//			/*many can fit*/kilo/2,
-//			/*only 1 can fit (@head)*/3*kilo } ;
-//	uint32 startOf1st1KB = (uint32)startVAs[2*allocCntPerSize];
-//	uint32 startOf1st2KB = (uint32)startVAs[4*allocCntPerSize];
-//	uint32 startOf1st7KB = (uint32)startVAs[6*allocCntPerSize];
-//
-//	uint32 expectedVAs[numOfBFTests] = {startOf1st7KB, startOf1st2KB, startOf1st2KB + testSizes[1],startOf1st1KB, KERNEL_HEAP_START + 2*sizeof(int)};
-//	short* tstStartVAs[numOfBFTests+2] ;
-//	short* tstMidVAs[numOfBFTests+2] ;
-//	short* tstEndVAs[numOfBFTests+2] ;
-//	for (int i = 0; i < numOfBFTests; ++i)
-//	{
-//		actualSize = testSizes[i] - sizeOfMetaData;
-//		va = tstStartVAs[i] = alloc_block(actualSize, DA_BF);
-//		tstMidVAs[i] = va + actualSize/2 ;
-//		tstEndVAs[i] = va + actualSize - sizeof(short);
-//
-//		//Check block
-//		cprintf("test#%d\n",i);
-//		expectedVA = (void*)expectedVAs[i];
-//		if (check_block(va, expectedVA, testSizes[i], 1) == 0)
-//		{
-//			is_correct = 0;
-//		}
-//		*(tstStartVAs[i]) = 353;
-//		*(tstMidVAs[i]) = 353;
-//		*(tstEndVAs[i]) = 353;
-//	}
-//
-//	if (is_correct) is_correct = check_list_size(numOfAllocs);
-//	if (is_correct)
-//	{
-//		eval += 15;
-//	}
-//	//====================================================================//
-//	/*BF ALLOC Scenario 3: Try to allocate a block with a size equal to the size of an existing free block*/
-//	cprintf("	3: Try to allocate a block with equal to an existing free block\n\n") ;
-//	is_correct = 1;
-//
-//	actualSize = kilo/4 - sizeOfMetaData;
-//	va = tstStartVAs[numOfBFTests] = alloc_block(actualSize, DA_BF);
-//	tstMidVAs[numOfBFTests] = va + actualSize/2 ;
-//	tstEndVAs[numOfBFTests] = va + actualSize - sizeof(short);
-//	//Check returned va
-//	expectedVA = (void*)(startOf1st2KB + testSizes[1] + testSizes[3]) ;
-//	if (is_correct) is_correct = check_block(va, expectedVA, kilo/4, 1);
-//	if (is_correct) is_correct = check_list_size(numOfAllocs-1);
-//
-//	*(tstStartVAs[numOfBFTests]) = 353 ;
-//	*(tstMidVAs[numOfBFTests]) = 353 ;
-//	*(tstEndVAs[numOfBFTests]) = 353 ;
-//
-//	if (is_correct)
-//	{
-//		eval += 10;
-//	}
-//	//====================================================================//
-//	/*FF ALLOC Scenario 4: Try to allocate a block with a bit smaller size [internal fragmentation case]*/
-//	cprintf("	4: Try to allocate a block with a bit smaller size [internal fragmentation case]\n\n") ;
-//	is_correct = 1;
-//
-//	actualSize = allocSizes[5] - sizeOfMetaData - 2;
-//	va = tstStartVAs[numOfBFTests+1] = alloc_block(actualSize, DA_BF);
-//	tstMidVAs[numOfBFTests+1] = va + 2 ;
-//	tstEndVAs[numOfBFTests+1] = va + actualSize - sizeof(short);
-//	//Check block
-//	expectedVA = startVAs[5*allocCntPerSize];
-//
-//	if (is_correct) is_correct = check_block(va, expectedVA, allocSizes[5], 1);
-//	if (is_correct) is_correct = check_list_size(numOfAllocs - 2);
-//
-//	*(tstStartVAs[numOfBFTests+1]) = 353 ;
-//	*(tstMidVAs[numOfBFTests+1]) = 353 ;
-//	*(tstEndVAs[numOfBFTests+1]) = 353 ;
-//
-//	if (is_correct)
-//	{
-//		eval += 10;
-//	}
-//	//====================================================================//
-//	/*BF ALLOC Scenario 5: Check stored data inside each allocated block*/
-//	cprintf("	5: Check stored data inside each allocated block\n\n") ;
-//	is_correct = 1;
-//
-//	for (int i = 0; i < numOfBFTests+2; ++i)
-//	{
-//		//cprintf("startVA = %x, mid = %x, last = %x\n", tstStartVAs[i], tstMidVAs[i], tstEndVAs[i]);
-//		if (*(tstStartVAs[i]) != 353 || *(tstMidVAs[i]) != 353 || *(tstEndVAs[i]) != 353)
-//		{
-//			//cprintf("start VA = %x, mid VA = %x, end VA = %x\n", tstStartVAs[i], tstMidVAs[i], tstEndVAs[i]);
-//			is_correct = 0;
-//			cprintf("alloc_block_BF #8.%d: WRONG! content of the block is not correct. Expected=%d, val1=%d, val2=%d, val3=%d\n",i, 353, *(tstStartVAs[i]), *(tstMidVAs[i]), *(tstEndVAs[i]));
-//			break;
-//		}
-//	}
-//
-//	if (is_correct)
-//	{
-//		eval += 10;
-//	}
+	cprintf("====================================================\n") ;
+	cprintf("SECOND: Tests depend on BOTH Allocate and Free [60%] \n") ;
+	cprintf("====================================================\n") ;
+	void* expectedVA;
+	uint32 expectedNumFreeBlks;
+	//Free set of blocks with different sizes (first block of each size)
+	for (int i = 0; i < numOfAllocs; ++i)
+	{
+		free_block(startVAs[i*allocCntPerSize]);
+	}
+	//Check number of freed blocks
+	is_correct = check_list_size(numOfAllocs);
+	if (is_correct)
+	{
+		eval += 10;
+	}
+	//====================================================================//
+	/*BF ALLOC Scenario 1: Try to allocate a block with a size greater than the size of any existing free block*/
+	cprintf("	1: Try to allocate large block [not fit in any space]\n\n") ;
+	is_correct = 1;
+
+	uint32 maxSize = 0 ;
+	for (int i = 0; i < numOfAllocs; ++i)
+	{
+		if (allocSizes[i] > maxSize)
+			maxSize = allocSizes[i] ;
+	}
+	va = alloc_block(maxSize, DA_BF);
+
+	//Check returned va
+	if(va != NULL)
+	{
+		is_correct = 0;
+		cprintf("alloc_block_BF #5: WRONG BF ALLOC - alloc_block_BF find a block instead no existing free blocks with the given size.\n");
+	}
+	if (is_correct)
+	{
+		eval += 5;
+	}
+	//====================================================================//
+	/*BF ALLOC Scenario 2: Try to allocate blocks with sizes smaller than existing free blocks*/
+	cprintf("	2: Try to allocate set of blocks with different sizes smaller than existing free blocks\n\n") ;
+	is_correct = 1;
+
+#define numOfBFTests 5
+	uint32 testSizes[numOfBFTests] = {
+			/*only 1 can fit*/4*kilo + kilo/2,
+			/*many can fit*/ 1*kilo + kilo/4,
+			/*many can fit*/kilo/2,
+			/*many can fit*/kilo/2,
+			/*only 1 can fit (@head)*/3*kilo } ;
+	uint32 startOf1st1KB = (uint32)startVAs[2*allocCntPerSize];
+	uint32 startOf1st2KB = (uint32)startVAs[4*allocCntPerSize];
+	uint32 startOf1st7KB = (uint32)startVAs[6*allocCntPerSize];
+
+	uint32 expectedVAs[numOfBFTests] = {startOf1st7KB, startOf1st2KB, startOf1st2KB + testSizes[1],startOf1st1KB, KERNEL_HEAP_START + 2*sizeof(int)};
+	short* tstStartVAs[numOfBFTests+2] ;
+	short* tstMidVAs[numOfBFTests+2] ;
+	short* tstEndVAs[numOfBFTests+2] ;
+	for (int i = 0; i < numOfBFTests; ++i)
+	{
+		actualSize = testSizes[i] - sizeOfMetaData;
+		va = tstStartVAs[i] = alloc_block(actualSize, DA_BF);
+		tstMidVAs[i] = va + actualSize/2 ;
+		tstEndVAs[i] = va + actualSize - sizeof(short);
+
+		//Check block
+		cprintf("test#%d\n",i);
+		expectedVA = (void*)expectedVAs[i];
+		if (check_block(va, expectedVA, testSizes[i], 1) == 0)
+		{
+			is_correct = 0;
+		}
+		*(tstStartVAs[i]) = 353;
+		*(tstMidVAs[i]) = 353;
+		*(tstEndVAs[i]) = 353;
+	}
+
+	if (is_correct) is_correct = check_list_size(numOfAllocs);
+	if (is_correct)
+	{
+		eval += 15;
+	}
+	//====================================================================//
+	/*BF ALLOC Scenario 3: Try to allocate a block with a size equal to the size of an existing free block*/
+	cprintf("	3: Try to allocate a block with equal to an existing free block\n\n") ;
+	is_correct = 1;
+
+	actualSize = kilo/4 - sizeOfMetaData;
+	va = tstStartVAs[numOfBFTests] = alloc_block(actualSize, DA_BF);
+	tstMidVAs[numOfBFTests] = va + actualSize/2 ;
+	tstEndVAs[numOfBFTests] = va + actualSize - sizeof(short);
+	//Check returned va
+	expectedVA = (void*)(startOf1st2KB + testSizes[1] + testSizes[3]) ;
+	if (is_correct) is_correct = check_block(va, expectedVA, kilo/4, 1);
+	if (is_correct) is_correct = check_list_size(numOfAllocs-1);
+
+	*(tstStartVAs[numOfBFTests]) = 353 ;
+	*(tstMidVAs[numOfBFTests]) = 353 ;
+	*(tstEndVAs[numOfBFTests]) = 353 ;
+
+	if (is_correct)
+	{
+		eval += 10;
+	}
+	//====================================================================//
+	/*FF ALLOC Scenario 4: Try to allocate a block with a bit smaller size [internal fragmentation case]*/
+	cprintf("	4: Try to allocate a block with a bit smaller size [internal fragmentation case]\n\n") ;
+	is_correct = 1;
+
+	actualSize = allocSizes[5] - sizeOfMetaData - 2;
+	va = tstStartVAs[numOfBFTests+1] = alloc_block(actualSize, DA_BF);
+	tstMidVAs[numOfBFTests+1] = va + 2 ;
+	tstEndVAs[numOfBFTests+1] = va + actualSize - sizeof(short);
+	//Check block
+	expectedVA = startVAs[5*allocCntPerSize];
+
+	if (is_correct) is_correct = check_block(va, expectedVA, allocSizes[5], 1);
+	if (is_correct) is_correct = check_list_size(numOfAllocs - 2);
+
+	*(tstStartVAs[numOfBFTests+1]) = 353 ;
+	*(tstMidVAs[numOfBFTests+1]) = 353 ;
+	*(tstEndVAs[numOfBFTests+1]) = 353 ;
+
+	if (is_correct)
+	{
+		eval += 10;
+	}
+	//====================================================================//
+	/*BF ALLOC Scenario 5: Check stored data inside each allocated block*/
+	cprintf("	5: Check stored data inside each allocated block\n\n") ;
+	is_correct = 1;
+
+	for (int i = 0; i < numOfBFTests+2; ++i)
+	{
+		//cprintf("startVA = %x, mid = %x, last = %x\n", tstStartVAs[i], tstMidVAs[i], tstEndVAs[i]);
+		if (*(tstStartVAs[i]) != 353 || *(tstMidVAs[i]) != 353 || *(tstEndVAs[i]) != 353)
+		{
+			//cprintf("start VA = %x, mid VA = %x, end VA = %x\n", tstStartVAs[i], tstMidVAs[i], tstEndVAs[i]);
+			is_correct = 0;
+			cprintf("alloc_block_BF #8.%d: WRONG! content of the block is not correct. Expected=%d, val1=%d, val2=%d, val3=%d\n",i, 353, *(tstStartVAs[i]), *(tstMidVAs[i]), *(tstEndVAs[i]));
+			break;
+		}
+	}
+
+	if (is_correct)
+	{
+		eval += 10;
+	}
 	cprintf("test alloc_block_BF completed. Evaluation = %d%\n", eval);
 }
 

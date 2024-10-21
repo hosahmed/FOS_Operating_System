@@ -8,7 +8,6 @@
 #include <inc/string.h>
 #include "../inc/dynamic_allocator.h"
 
-
 //==================================================================================//
 //============================== GIVEN FUNCTIONS ===================================//
 //==================================================================================//
@@ -106,7 +105,6 @@ void initialize_dynamic_allocator(uint32 daStart, uint32 initSizeOfAllocatedSpac
 	//panic("initialize_dynamic_allocator is not implemented yet");
 
 	LIST_INIT(&freeBlocksList);
-	struct BlockElement first_free_block;
 	struct BlockElement *ptr_first_free_block = (struct BlockElement*) (daStart + 2*sizeof(int));
 
 	int begin_flag = 1, end_flag = 1, begin_size = initSizeOfAllocatedSpace - 2*sizeof(int), end_size = initSizeOfAllocatedSpace - 2*sizeof(int);
@@ -116,8 +114,6 @@ void initialize_dynamic_allocator(uint32 daStart, uint32 initSizeOfAllocatedSpac
 	*ptr_begin_size = begin_size;
 	*ptr_end_flag = end_flag;
 	*ptr_end_size = end_size;
-
-	*ptr_first_free_block = first_free_block;
 
 	LIST_INSERT_HEAD(&freeBlocksList, ptr_first_free_block);
 
@@ -263,8 +259,8 @@ void free_block(void *va)
 	if(va == NULL)
 		return;
 
-	int* before_footer = (int*) (va - 2*sizeof(int));
-	int* after_header = (int*) (va + get_block_size(va) - sizeof(int));
+	int* footer_before = (int*) (va - 2*sizeof(int));
+	int* header_after = (int*) (va + get_block_size(va) - sizeof(int));
 	int* header = (int*) (va - sizeof(int));
 	int* footer = (int*) (va + get_block_size(va) - 2*sizeof(int));
 
@@ -284,61 +280,42 @@ void free_block(void *va)
 
 	}
 
-	if(*before_footer % 2 != 0 && *after_header % 2 != 0)
+	if(*footer_before % 2 != 0 && *header_after % 2 != 0)
 	{
 		set_block_data(va, get_block_size(va), 0);
 		if(!LIST_SIZE(&(freeBlocksList)) || first) {
-			LIST_INSERT_HEAD(&(freeBlocksList),(struct BlockElement*) va);
+			struct BlockElement* first_free_block = (struct BlockElement*) va;
+			LIST_INSERT_HEAD(&(freeBlocksList), first_free_block);
 		}
 		else{
 			LIST_INSERT_AFTER(&(freeBlocksList), element, (struct BlockElement*) va);
 		}
 	}
-	else if(*before_footer % 2 == 0 && *after_header % 2 != 0)
+	else if(*footer_before % 2 == 0 && *header_after % 2 != 0)
 	{
-		int newSize = *before_footer + get_block_size(va);
-		void* ptr_prev_element = va - *before_footer;
+		int newSize = *footer_before + get_block_size(va);
+		void* ptr_prev_element = va - *footer_before;
 		set_block_data(ptr_prev_element, newSize, 0);
 
-		before_footer = NULL;
-		header = NULL;
 	}
 
-	else if(*before_footer % 2 != 0 && *after_header % 2 == 0)
+	else if(*footer_before % 2 != 0 && *header_after % 2 == 0)
 	{
-		struct BlockElement moved_free_block;
-		struct BlockElement* ptr_blockelement = (struct BlockElement*)(va + get_block_size(va));
+		struct BlockElement* ptr_next_blockelement = (struct BlockElement*)(va + get_block_size(va));
 		struct BlockElement* ptr_moved_free_block = (struct BlockElement*) va;
-		*ptr_moved_free_block = moved_free_block;
-		int newSize = *after_header + get_block_size(va);
+		int newSize = *header_after + get_block_size(va);
 		set_block_data(va, newSize, 0);
-		LIST_INSERT_BEFORE(&(freeBlocksList),ptr_blockelement,ptr_moved_free_block);
-		LIST_REMOVE(&(freeBlocksList),ptr_blockelement);
+		LIST_INSERT_BEFORE(&(freeBlocksList),ptr_next_blockelement,ptr_moved_free_block);
+		LIST_REMOVE(&(freeBlocksList),ptr_next_blockelement);
 
-		after_header = NULL;
-		footer = NULL;
-
-		int *ptr = (int*) ptr_blockelement;
-
-		for(int i = 0 ; i < 2 ; i++) {
-			*ptr = (int)NULL;
-		}
 
 	}
 	else {
-		int newSize = *after_header + *before_footer + get_block_size(va);
-		void* ptr_prev = va - *before_footer;
-		struct BlockElement* ptr_next_blockelement = (struct BlockElement*)(va + *after_header);
-
+		struct BlockElement* ptr_next_blockelement = (struct BlockElement*)(va + get_block_size(va));
+		int newSize = *header_after + *footer_before + get_block_size(va);
+		void* ptr_prev = va - *footer_before;
 		set_block_data(ptr_prev, newSize, 0);
 		LIST_REMOVE(&(freeBlocksList),ptr_next_blockelement);
-
-		after_header = NULL;
-		footer = NULL;
-		before_footer = NULL;
-		header = NULL;
-		ptr_next_blockelement = NULL;
-
 	}
 
 }

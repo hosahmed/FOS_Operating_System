@@ -36,10 +36,10 @@ void sleep(struct Channel *chan, struct spinlock* lk)
 	release_spinlock(lk);
 
 	acquire_spinlock(&(ProcessQueues.qlock));
+	current_Running_Process->env_status = ENV_BLOCKED;
 	enqueue(&(chan->queue),current_Running_Process);
-	release_spinlock(&(ProcessQueues.qlock));
-
 	sched();
+	release_spinlock(&(ProcessQueues.qlock));
 	acquire_spinlock(lk);
 
 }
@@ -59,8 +59,12 @@ void wakeup_one(struct Channel *chan)
 	//Your Code is Here...
 	acquire_spinlock(&(ProcessQueues.qlock));
 
-	struct Env* Blocked_process = dequeue(&(chan->queue));
-	sched_insert_ready0(Blocked_process);
+
+	if(chan->queue.size != 0)
+	{
+		struct Env* Blocked_process = dequeue(&(chan->queue));
+		sched_insert_ready0(Blocked_process);
+	}
 
 	release_spinlock(&(ProcessQueues.qlock));
 }

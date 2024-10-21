@@ -258,8 +258,89 @@ void free_block(void *va)
 {
 	//TODO: [PROJECT'24.MS1 - #07] [3] DYNAMIC ALLOCATOR - free_block
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("free_block is not implemented yet");
-	//Your Code is Here...
+	//panic("free_block is not implemented yet");
+
+	if(va == NULL)
+		return;
+
+	int* before_footer = (int*) (va - 2*sizeof(int));
+	int* after_header = (int*) (va + get_block_size(va) - sizeof(int));
+	int* header = (int*) (va - sizeof(int));
+	int* footer = (int*) (va + get_block_size(va) - 2*sizeof(int));
+
+	struct BlockElement *element;
+	struct BlockElement *it;
+
+	bool first = 0;
+
+	LIST_FOREACH(it, &(freeBlocksList))
+	{
+		element = it;
+		if((void*) it > va)
+		{
+			first = 1;
+			break;
+		}
+
+	}
+
+	if(*before_footer % 2 != 0 && *after_header % 2 != 0)
+	{
+		set_block_data(va, get_block_size(va), 0);
+		if(!LIST_SIZE(&(freeBlocksList)) || first) {
+			LIST_INSERT_HEAD(&(freeBlocksList),(struct BlockElement*) va);
+		}
+		else{
+			LIST_INSERT_AFTER(&(freeBlocksList), element, (struct BlockElement*) va);
+		}
+	}
+	else if(*before_footer % 2 == 0 && *after_header % 2 != 0)
+	{
+		int newSize = *before_footer + get_block_size(va);
+		void* ptr_prev_element = va - *before_footer;
+		set_block_data(ptr_prev_element, newSize, 0);
+
+		before_footer = NULL;
+		header = NULL;
+	}
+
+	else if(*before_footer % 2 != 0 && *after_header % 2 == 0)
+	{
+		struct BlockElement moved_free_block;
+		struct BlockElement* ptr_blockelement = (struct BlockElement*)(va + get_block_size(va));
+		struct BlockElement* ptr_moved_free_block = (struct BlockElement*) va;
+		*ptr_moved_free_block = moved_free_block;
+		int newSize = *after_header + get_block_size(va);
+		set_block_data(va, newSize, 0);
+		LIST_INSERT_BEFORE(&(freeBlocksList),ptr_blockelement,ptr_moved_free_block);
+		LIST_REMOVE(&(freeBlocksList),ptr_blockelement);
+
+		after_header = NULL;
+		footer = NULL;
+
+		int *ptr = (int*) ptr_blockelement;
+
+		for(int i = 0 ; i < 2 ; i++) {
+			*ptr = (int)NULL;
+		}
+
+	}
+	else {
+		int newSize = *after_header + *before_footer + get_block_size(va);
+		void* ptr_prev = va - *before_footer;
+		struct BlockElement* ptr_next_blockelement = (struct BlockElement*)(va + *after_header);
+
+		set_block_data(ptr_prev, newSize, 0);
+		LIST_REMOVE(&(freeBlocksList),ptr_next_blockelement);
+
+		after_header = NULL;
+		footer = NULL;
+		before_footer = NULL;
+		header = NULL;
+		ptr_next_blockelement = NULL;
+
+	}
+
 }
 
 //=========================================

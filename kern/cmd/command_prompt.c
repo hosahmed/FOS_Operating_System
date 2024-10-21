@@ -465,12 +465,17 @@ int process_command(int number_of_arguments, char** arguments) {
 		foundCommands_size--;
 	}
 	for (int i = 0; i < NUM_OF_COMMANDS; i++) {
-		if (strcmp(arguments[0], commands[i].name) == 0 && (number_of_arguments - 1 == commands[i].num_of_args || (commands[i].num_of_args ==-1 && number_of_arguments-1>=1)))
+		if ((strcmp(arguments[0], commands[i].name) == 0) && (number_of_arguments - 1 == commands[i].num_of_args || (commands[i].num_of_args == -1 && number_of_arguments-1>=1)))
 		{
 			return i;
 		}
-		else if (strcmp(arguments[0], commands[i].name) == 0)
+		else if (!(strlen(arguments[0]) != strlen(commands[i].name))&& strcmp(arguments[0], commands[i].name) == 0)
 		{
+			struct Command *element;
+			LIST_FOREACH(element,&(foundCommands))
+			{
+				cprintf("%s\n %d \n %d",element->name,strlen(arguments[0]),strlen(commands[i].name));
+			}
 			LIST_INSERT_HEAD(&foundCommands, &commands[i]);
 			return CMD_INV_NUM_ARGS;
 
@@ -511,13 +516,3 @@ int process_command(int number_of_arguments, char** arguments) {
 	}
 
 }
-
-//int process_command(int number_of_arguments, char** arguments) {
-//	//TODO: [PROJECT'24.MS1 - #01] [1] PLAY WITH CODE! - process_command
-//	for (int i = 0; i < NUM_OF_COMMANDS; i++) {
-//	            if (strcmp(arguments[0], commands[i].name) == 0) {
-//	                return i;
-//	            }
-//	}
-//	return CMD_INVALID;
-//}

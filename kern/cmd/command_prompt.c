@@ -472,9 +472,11 @@ int process_command(int number_of_arguments, char** arguments) {
 		else if (!(strlen(arguments[0]) != strlen(commands[i].name))&& strcmp(arguments[0], commands[i].name) == 0)
 		{
 			struct Command *element;
-			LIST_FOREACH(element,&(foundCommands))
-			{
-				cprintf("%s\n %d \n %d",element->name,strlen(arguments[0]),strlen(commands[i].name));
+			if(LIST_SIZE(&foundCommands)) {
+				LIST_FOREACH(element, &(foundCommands))
+				{
+					LIST_REMOVE(&(foundCommands), element);
+				}
 			}
 			LIST_INSERT_HEAD(&foundCommands, &commands[i]);
 			return CMD_INV_NUM_ARGS;

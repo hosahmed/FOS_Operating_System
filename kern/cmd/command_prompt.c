@@ -457,6 +457,9 @@ int process_command(int number_of_arguments, char** arguments) {
 	//TODO: [PROJECT'24.MS1 - #01] [1] PLAY WITH CODE! - process_command
 	bool Finished= 0;
 	int foundCommands_size = LIST_SIZE(&foundCommands);
+	struct Command_LIST matched_cmds;
+
+	LIST_INIT(&matched_cmds);
 
 	while(foundCommands_size!=0)
 	{
@@ -471,13 +474,6 @@ int process_command(int number_of_arguments, char** arguments) {
 		}
 		else if (!(strlen(arguments[0]) != strlen(commands[i].name))&& strcmp(arguments[0], commands[i].name) == 0)
 		{
-			struct Command *element;
-			if(LIST_SIZE(&foundCommands)) {
-				LIST_FOREACH(element, &(foundCommands))
-				{
-					LIST_REMOVE(&(foundCommands), element);
-				}
-			}
 			LIST_INSERT_HEAD(&foundCommands, &commands[i]);
 			return CMD_INV_NUM_ARGS;
 
@@ -500,7 +496,7 @@ int process_command(int number_of_arguments, char** arguments) {
 
 			if (IS_Found == 1)
 			{
-				LIST_INSERT_HEAD(&foundCommands, &commands[i]);
+				LIST_INSERT_HEAD(&matched_cmds, &commands[i]);
 				Finished=1;
 			}
 
@@ -509,6 +505,7 @@ int process_command(int number_of_arguments, char** arguments) {
 	if(Finished==1)
 	{
 		Finished=0;
+		foundCommands = matched_cmds;
 		return CMD_MATCHED;
 	}
 	else

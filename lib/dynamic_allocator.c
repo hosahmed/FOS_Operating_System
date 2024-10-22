@@ -338,15 +338,134 @@ void free_block(void *va)
 
 }
 
-//=========================================
-// [6] REALLOCATE BLOCK BY FIRST FIT:
-//=========================================
 void *realloc_block_FF(void* va, uint32 new_size)
 {
 	//TODO: [PROJECT'24.MS1 - #08] [3] DYNAMIC ALLOCATOR - realloc_block_FF
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("realloc_block_FF is not implemented yet");
+	//panic("realloc_block_FF is not implemented yet");
 	//Your Code is Here...
+	if (new_size % 2 != 0) new_size++;
+	if(va != NULL && new_size == 0)
+	{
+		free_block(va);
+		return NULL;
+	}
+	else if(va == NULL && new_size > 0)
+		return alloc_block_FF(new_size);
+	else if(va == NULL && new_size == 0)
+		return NULL;
+	else
+	{
+		if(new_size > get_block_size(va))//increase size
+		{
+			void *forward_block_ptr=va;
+			//forward_check_ptr+=get_block_size(va)-4;
+			forward_block_ptr+=get_block_size(va);
+			uint32 difference_needed=new_size-get_block_size(va)+8;
+
+			if(is_free_block(forward_block_ptr))
+			{
+				uint32 forward_block_size=get_block_size(forward_block_ptr);
+				if((forward_block_size-difference_needed)<0)//case 1(free block size is not available for resizing)
+				{
+					free_block(va);
+					alloc_block_FF(new_size);
+				}
+				else if(forward_block_size-difference_needed<16)//case 2(free block size is sufficient but the remaining size can not be used)
+				{
+					struct BlockElement* element=forward_block_ptr;
+					LIST_REMOVE(&(freeBlocksList),element);
+					uint32 *reset_head=(uint32*)forward_block_ptr;
+				    *(--reset_head)=0;
+				    void *reset_foot = forward_block_ptr-8+forward_block_size;
+				    *(uint32*)reset_foot=0;
+				    set_block_data(va,get_block_size(va)+forward_block_size,1);
+				}
+				else//case 3 (free block size is sufficient and the remaining size can be used)
+				{
+					struct BlockElement* element=forward_block_ptr;
+					if(LIST_PREV(element) == NULL)
+						LIST_INSERT_HEAD(&(freeBlocksList),element+difference_needed);
+					else
+						LIST_INSERT_AFTER(&(freeBlocksList),LIST_PREV(element),element+difference_needed);
+					LIST_REMOVE(&(freeBlocksList),element);
+					uint32 *reset_head=(uint32*)forward_block_ptr;
+					*(--reset_head)=0;
+					void *reset_foot = forward_block_ptr-8+forward_block_size;
+					*(uint32*)reset_foot=0;
+					forward_block_ptr+=difference_needed;
+					set_block_data(forward_block_ptr,forward_block_size-difference_needed,0);
+					set_block_data(va,new_size+8,1);
+				}
+
+			}
+			forward_block_ptr=NULL;
+		}
+		else//decrease size
+		{
+			void* forward_block_ptr= va;
+			forward_block_ptr+=get_block_size(va);
+			uint32 difference_needed=get_block_size(va)-new_size-8;
+			uint32 forward_block_size=get_block_size(forward_block_ptr);
+
+			if(is_free_block(forward_block_ptr))//there exist a free block in front of us so we will increase its size
+			{
+				uint32 *reset_foot=(uint32*)forward_block_ptr,*reset_head=(uint32*)va;
+				reset_foot-=2;
+				*reset_foot=0;
+				reset_foot++;
+				*reset_foot=0;
+				void *reset_foot_free=forward_block_ptr;
+				reset_foot_free+=-8+forward_block_size;
+				*(uint32*)reset_foot_free=0;
+				*(--reset_head)=0;
+				set_block_data(va,new_size+ 8,1);
+				struct BlockElement* element=forward_block_ptr;
+				struct BlockElement* prev_free_block=LIST_PREV(element);
+				LIST_REMOVE(&(freeBlocksList),element);
+				forward_block_ptr-=difference_needed;
+				set_block_data(forward_block_ptr,forward_block_size+difference_needed,0);
+
+				element=forward_block_ptr;
+				if(prev_free_block == NULL)
+					LIST_INSERT_HEAD(&(freeBlocksList),element);
+				else
+					LIST_INSERT_AFTER(&(freeBlocksList),prev_free_block,element);
+			}
+			else if(difference_needed>=16) //there is no free block in front of us so we will check if the decreased size is sufficient for a new free block
+			{
+				int x = 3,y=1;
+				uint32* reset_foot=(uint32*)forward_block_ptr,*reset_head=(uint32*)va;
+				reset_foot-=2;
+				*reset_foot=0;
+				reset_head--;
+				*reset_head=0;
+				set_block_data(va,new_size+8,1);
+				forward_block_ptr-=difference_needed;
+				set_block_data(forward_block_ptr,difference_needed,0);
+				struct BlockElement* new_block=(struct BlockElement*)forward_block_ptr;
+
+				bool first = 0;
+				struct BlockElement* element = LIST_FIRST(&(freeBlocksList));
+				if(element > new_block || element == NULL) {
+					LIST_INSERT_HEAD(&(freeBlocksList), new_block);
+				}
+				else {
+					struct BlockElement* it;
+					 LIST_FOREACH(it, &(freeBlocksList))
+					 {
+					     if((void*) it > va)
+					     {
+					         break;
+					     }
+					     element = it;
+					 }
+					 LIST_INSERT_AFTER(&(freeBlocksList), element, new_block);
+				}
+			}
+		}
+	}
+	return va;
 }
 
 /*********************************************************************************************/

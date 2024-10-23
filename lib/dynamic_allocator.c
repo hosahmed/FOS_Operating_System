@@ -292,7 +292,8 @@ void free_block(void *va)
 		element = it;
 		if((void*) it > va)
 		{
-			first = 1;
+			if(LIST_FIRST(&(freeBlocksList)) == it)
+				first = 1;
 			break;
 		}
 

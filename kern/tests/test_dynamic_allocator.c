@@ -1420,6 +1420,38 @@ void test_realloc_block_FF()
 		eval += 25;
 	}
 
+	//[3.3] relocate block to new address
+	cprintf("	3.3: relocate block to new address\n\n") ;
+	is_correct = 1;
+	{
+	    blockIndex = 1*allocCntPerSize - 1;
+	    old_size = allocSizes[0] - sizeOfMetaData;
+	    new_size = old_size + 8*kilo;
+
+	    va = realloc_block_FF(startVAs[blockIndex], new_size);
+
+	    if (va == startVAs[blockIndex])
+	    {
+	        is_correct = 0;
+	        cprintf("test_realloc_block_FF #3.3.1: FAILED! Block was not relocated.\n");
+	    }
+
+	    expectedSize = ROUNDUP(new_size + sizeOfMetaData, 2);
+	    expectedVA = va;
+
+	    if (check_block(va, expectedVA, expectedSize, 1) == 0)
+	    {
+	        is_correct = 0;
+	        cprintf("test_realloc_block_FF #3.3.2: FAILED! Incorrect block after relocation.\n");
+	    }
+
+	    if (*(startVAs[blockIndex]) != blockIndex || *(midVAs[blockIndex]) != blockIndex || *(endVAs[blockIndex]) != blockIndex)
+	    {
+	        is_correct = 0;
+	        cprintf("test_realloc_block_FF #3.3.3: WRONG REALLOC! Content of relocated block is incorrect. Expected %d\n", blockIndex);
+	    }
+	}
+
 	//====================================================================//
 	//[4] Test realloc with decreased sizes
 	//====================================================================//
@@ -1499,6 +1531,45 @@ void test_realloc_block_FF()
 	{
 		eval += 15;
 	}
+
+	cprintf("	4.3: decrease block size and coalesce with the next free block (Coalesce)\n\n");
+	is_correct = 1;
+	{
+	    blockIndex = 2 * allocCntPerSize + 1;
+	    void* nextBlockVA = startVAs[blockIndex + 1];
+
+	    free_block(startVAs[blockIndex + 1]);
+	    expectedNumOfFreeBlks++;
+
+	    old_size = allocSizes[2] - sizeOfMetaData;
+	    new_size = old_size - 2*kilo;
+
+	    va = realloc_block_FF(startVAs[blockIndex], new_size);
+
+	    expectedSize = ROUNDUP(new_size + sizeOfMetaData, 2);
+	    expectedVA = va;
+
+	    if (check_block(va, expectedVA, expectedSize, 1) == 0)
+	    {
+	        is_correct = 0;
+	        cprintf("test_realloc_block_FF #4.3.1: FAILED! Incorrect block after shrinking.\n");
+	    }
+
+	    if (*(startVAs[blockIndex]) != blockIndex || *(midVAs[blockIndex]) != blockIndex || *(endVAs[blockIndex]) != blockIndex)
+	    {
+	        is_correct = 0;
+	        cprintf("test_realloc_block_FF #4.3.2: WRONG REALLOC! Content of the resized block is incorrect. Expected %d\n", blockIndex);
+	    }
+
+
+	    expectedNumOfFreeBlks--;
+	    if (check_list_size(expectedNumOfFreeBlks) == 0)
+	    {
+	        is_correct = 0;
+	        cprintf("test_realloc_block_FF #4.3.3: FAILED! Coalescing did not occur correctly.\n");
+	    }
+	}
+
 
 	cprintf("[PARTIAL] test realloc_block with FIRST FIT completed. Evaluation = %d%\n", eval);
 

@@ -345,7 +345,6 @@ void *realloc_block_FF(void* va, uint32 new_size)
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
 	//panic("realloc_block_FF is not implemented yet");
 	//Your Code is Here...
-	if (new_size % 2 != 0) new_size++;
 	if(va != NULL && new_size == 0)
 	{
 		free_block(va);
@@ -355,17 +354,22 @@ void *realloc_block_FF(void* va, uint32 new_size)
 		return alloc_block_FF(new_size);
 	else if(va == NULL && new_size == 0)
 		return NULL;
+
 	else
 	{
-		if(new_size > get_block_size(va))//increase size
+		if (new_size % 2 != 0) new_size++;	//ensure that the size is even (to use LSB as allocation flag)
+		if (new_size < DYN_ALLOC_MIN_BLOCK_SIZE)
+			new_size = DYN_ALLOC_MIN_BLOCK_SIZE;
+
+		if(new_size + 8 > get_block_size(va))//increase size
 		{
 			void *forward_block_ptr=va;
 			forward_block_ptr+=get_block_size(va);
 			uint32 difference_needed=new_size-get_block_size(va)+8;
+			uint32 forward_block_size=get_block_size(forward_block_ptr);
 
 			if(is_free_block(forward_block_ptr))
 			{
-				uint32 forward_block_size=get_block_size(forward_block_ptr);
 				if((forward_block_size-difference_needed)<0)//case 1(free block size is not available for resizing)
 				{
 					free_block(va);
@@ -403,21 +407,12 @@ void *realloc_block_FF(void* va, uint32 new_size)
 				}
 
 			}
+			else //case 4(after is not free)
+			{
+				free_block(va);
+				alloc_block_FF(new_size);
+			}
 			forward_block_ptr=NULL;
-			//void *backward_check_ptr=va;
-			//backward_check_ptr-=2;
-//			if(is_free_block(backward_check_ptr)>0 &&is_free_block(forward_check_ptr)>0)
-//			{
-//
-//			}
-//			else if(is_free_block(backward_check_ptr)>0)
-//			{
-//
-//			}
-//			else
-//			{
-//
-//			}
 		}
 		else//decrease size
 		{
@@ -454,7 +449,6 @@ void *realloc_block_FF(void* va, uint32 new_size)
 			else if(difference_needed>=16) //there is no free block in front of us so we will check if the decreased size is sufficient for a new free block
 			{
 				int x = 3,y=1;
-//				cprintf("%d\n",x);
 				uint32* reset_foot=(uint32*)forward_block_ptr,*reset_head=(uint32*)va;
 				reset_foot-=2;
 				*reset_foot=0;

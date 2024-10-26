@@ -1554,9 +1554,8 @@ void test_realloc_block_FF()
 		old_size = allocSizes[0];
 		new_size = old_size - sizeOfMetaData;
 		va = realloc_block_FF(startVAs[blockIndex], new_size);
-		expectedSize = allocSizes[1];
-
 		block_size = get_block_size(startVAs[blockIndex]);
+
 		if (block_size != new_size + sizeOfMetaData)
 		{
 			cprintf("test_realloc_block_FF #5.1: Block size is incorrect. Expected %d, Actual %d\n", new_size + sizeOfMetaData, block_size);

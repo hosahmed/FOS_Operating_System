@@ -1533,17 +1533,17 @@ void test_realloc_block_FF()
 
 		if(va != startVAs[blockIndex])
 		{
-			cprintf("test_realloc_block_FF #4.3.1: WRONG REALLOC - it return wrong address. Expected %x, Actual %x\n", startVAs[blockIndex] ,va);
+			cprintf("test_realloc_block_FF #4.3.1: WRONG REALLOC - returns the wrong address. Expected %x, Actual %x\n", startVAs[blockIndex] ,va);
 		}
 
 		if (block_size != new_size + sizeOfMetaData)
 		{
-			cprintf("test_realloc_block_FF #4.3.2: WRONG REALLOC! block size after realloc is not correct. Expected %d, Actual %d\n",new_size + sizeOfMetaData, block_size);
+			cprintf("test_realloc_block_FF #4.3.2: WRONG REALLOC! block size is incorrect. Expected %d, Actual %d\n",new_size + sizeOfMetaData, block_size);
 		}
 
 		if (*(startVAs[blockIndex]) != blockIndex)
 		{
-			cprintf("test_realloc_block_FF #4.3.3: WRONG REALLOC! content of the block is not correct. Expected %d\n", blockIndex);
+			cprintf("test_realloc_block_FF #4.3.3: WRONG REALLOC! block content is incorrect. Expected %d\n", blockIndex);
 		}
 	}
 

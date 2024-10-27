@@ -189,10 +189,10 @@ void *alloc_block_FF(uint32 size)
 	    }
 	}
 
-	if(sbrk(LIST_SIZE(&(freeBlocksList))) == (void*)-1)
+	if(sbrk(size + 2*sizeof(int)) == (void*)-1)
 	    return NULL;
 
-	return sbrk(LIST_SIZE(&(freeBlocksList)));
+	return sbrk(size + 2*sizeof(int));
 
 }
 //=========================================
@@ -259,10 +259,10 @@ void *alloc_block_BF(uint32 size)
 		return (void*)address;
 	}
 
-	if(sbrk(LIST_SIZE(&(freeBlocksList))) == (void*)-1)
+	if(sbrk(size + 2*sizeof(int)) == (void*)-1)
 		return NULL;
 
-	return sbrk(LIST_SIZE(&(freeBlocksList)));
+	return sbrk(size + 2*sizeof(int));
 }
 
 //===================================================
@@ -358,7 +358,7 @@ void *realloc_block_FF(void* va, uint32 new_size)
 	else
 	{
 		if (new_size % 2 != 0) new_size++;	//ensure that the size is even (to use LSB as allocation flag)
-		if (new_size < DYN_ALLOC_MIN_BLOCK_SIZE)
+		if (new_size < DYN_ALLOC_MIN_BLOCK_SIZE) //ensure that the size is at least 8 bytes
 			new_size = DYN_ALLOC_MIN_BLOCK_SIZE;
 
 		if(new_size + 8 > get_block_size(va))//increase size
@@ -368,9 +368,9 @@ void *realloc_block_FF(void* va, uint32 new_size)
 			uint32 difference_needed=new_size-get_block_size(va)+8;
 			uint32 forward_block_size=get_block_size(forward_block_ptr);
 
-			if(is_free_block(forward_block_ptr))
+			if(is_free_block(forward_block_ptr)) // the block after is free
 			{
-				if((forward_block_size-difference_needed)<0)//case 1(free block size is not available for resizing)
+				if((forward_block_size-difference_needed)<0)//case 1(free block size is insufficient)
 				{// relocate and copy data
 					void *new_block = alloc_block_FF(new_size);
 				    memcpy(new_block, va, get_block_size(va) - 8);
@@ -408,7 +408,7 @@ void *realloc_block_FF(void* va, uint32 new_size)
 				}
 
 			}
-			else //case 4(after is not free)
+			else //case 4(the block after is not free)
 			{ // relocate and copy data
 				void *new_block = alloc_block_FF(new_size);
 			    memcpy(new_block, va, get_block_size(va) - 8);

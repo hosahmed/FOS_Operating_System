@@ -281,14 +281,13 @@ void sys_free_user_mem(uint32 virtual_address, uint32 size) {
 	} else if (virtual_address < USER_HEAP_START || virtual_address >= USER_HEAP_MAX) {
 		env_exit();
 		return;
-	} else {
-		if (isBufferingEnabled()) {
-			__free_user_mem_with_buffering(cur_env, virtual_address, size);
-		} else {
-			free_user_mem(cur_env, virtual_address, size);
-		}
-		return;
 	}
+	if (isBufferingEnabled()) {
+		__free_user_mem_with_buffering(cur_env, virtual_address, size);
+	} else {
+		free_user_mem(cur_env, virtual_address, size);
+	}
+	return;
 
 }
 

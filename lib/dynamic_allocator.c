@@ -207,13 +207,13 @@ void *alloc_block_BF(uint32 size)
 		if (size % 2 != 0) size++;	//ensure that the size is even (to use LSB as allocation flag)
 		if (size < DYN_ALLOC_MIN_BLOCK_SIZE)
 			size = DYN_ALLOC_MIN_BLOCK_SIZE ;
-			if (!is_initialized)
-			{
-				uint32 required_size = size + 2*sizeof(int) /*header & footer*/ + 2*sizeof(int) /*da begin & end*/ ;
-				uint32 da_start = (uint32)sbrk(ROUNDUP(required_size, PAGE_SIZE)/PAGE_SIZE);
-				uint32 da_break = (uint32)sbrk(0);
-				initialize_dynamic_allocator(da_start, da_break - da_start);
-			}
+		if (!is_initialized)
+		{
+			uint32 required_size = size + 2*sizeof(int) /*header & footer*/ + 2*sizeof(int) /*da begin & end*/ ;
+			uint32 da_start = (uint32)sbrk(ROUNDUP(required_size, PAGE_SIZE)/PAGE_SIZE);
+			uint32 da_break = (uint32)sbrk(0);
+			initialize_dynamic_allocator(da_start, da_break - da_start);
+		}
 	}
 	//==================================================================================
 	//==================================================================================
@@ -315,7 +315,6 @@ void free_block(void *va)
 		int newSize = *footer_before + get_block_size(va);
 		void* ptr_prev_element = va - *footer_before;
 		set_block_data(ptr_prev_element, newSize, 0);
-
 	}
 
 	else if(*footer_before % 2 != 0 && *header_after % 2 == 0)
@@ -326,8 +325,6 @@ void free_block(void *va)
 		set_block_data(va, newSize, 0);
 		LIST_INSERT_BEFORE(&(freeBlocksList),ptr_next_blockelement,ptr_moved_free_block);
 		LIST_REMOVE(&(freeBlocksList),ptr_next_blockelement);
-
-
 	}
 	else {
 		struct BlockElement* ptr_next_blockelement = (struct BlockElement*)(va + get_block_size(va));

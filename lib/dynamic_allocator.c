@@ -189,10 +189,10 @@ void *alloc_block_FF(uint32 size)
 	    }
 	}
 
-	if(sbrk(size + 2*sizeof(int)) == (void*)-1)
+	if(sbrk(ROUNDUP(size + 2*sizeof(int), PAGE_SIZE) / 4096) == (void*)-1)
 	    return NULL;
 
-	return sbrk(size + 2*sizeof(int));
+	return alloc_block_FF(size);
 
 }
 //=========================================

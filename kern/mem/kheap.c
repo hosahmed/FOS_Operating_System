@@ -17,7 +17,7 @@ int initialize_kheap_dynamic_allocator(uint32 daStart, uint32 initSizeToAllocate
 
 	segmentBreak = start = ROUNDDOWN(daStart, PAGE_SIZE);
     initSizeToAllocate = ROUNDUP(initSizeToAllocate, PAGE_SIZE);
-	uint32 noOfPagesToAllocate = initSizeToAllocate / 4096;
+	uint32 noOfPagesToAllocate = initSizeToAllocate / 4096; /*4KB*/
 	segmentBreak += initSizeToAllocate;
 	hardLimit = daLimit;
 	uint32 iterator = start;
@@ -48,14 +48,52 @@ void* sbrk(int numOfPages)
 	 * 	1) Allocating additional pages for a kernel dynamic allocator will fail if the free frames are exhausted
 	 * 		or the break exceed the limit of the dynamic allocator. If sbrk fails, return -1
 	 */
-
 	//MS2: COMMENT THIS LINE BEFORE START CODING==========
-	return (void*)-1 ;
+	//return (void*)-1 ;
 	//====================================================
 
 	//TODO: [PROJECT'24.MS2 - #02] [1] KERNEL HEAP - sbrk
 	// Write your code here, remove the panic and write your code
-	panic("sbrk() is not implemented yet...!!");
+	//panic("sbrk() is not implemented yet...!!");
+
+	if(!numOfPages)
+		return (void*)segmentBreak;
+
+	uint32 oldSegBreak = segmentBreak;
+	uint32 iterator = segmentBreak;
+
+	if(hardLimit < segmentBreak + 4096*numOfPages || !LIST_SIZE(&MemFrameLists.free_frame_list))
+		return (void*)-1;
+
+
+	for (int i = 0; i < numOfPages; i++){
+		struct FrameInfo *ptr_frame_info;
+		allocate_frame(&ptr_frame_info);
+		map_frame(ptr_page_directory, ptr_frame_info, iterator, PERM_USER | PERM_WRITEABLE);
+		iterator += 4096;
+	}
+
+	uint32* last_footer = (uint32*)(segmentBreak - 2*sizeof(int));
+	uint32 last_block_size = *last_footer - (*last_footer % 2 == 0 ? 0 : 1);
+
+//	cprintf("\n\nlast block size = %d\n\n", last_block_size);
+
+	void* last_block = (void*)(segmentBreak - last_block_size);
+
+	if(is_free_block(last_block)) {
+		set_block_data(last_block, get_block_size(last_block) + 4096*numOfPages,0);
+	} else {
+		set_block_data((void*)oldSegBreak, 4096*numOfPages,0);
+		LIST_INSERT_TAIL(&(freeBlocksList),(struct BlockElement*)(void*)oldSegBreak);
+	}
+
+	uint32* endBlock = (uint32*)(iterator - sizeof(int));
+
+	*endBlock = 1;
+
+	segmentBreak = iterator;
+
+	return (void*)oldSegBreak;
 }
 
 //TODO: [PROJECT'24.MS2 - BONUS#2] [1] KERNEL HEAP - Fast Page Allocator
@@ -64,9 +102,16 @@ void* kmalloc(unsigned int size)
 {
 	//TODO: [PROJECT'24.MS2 - #03] [1] KERNEL HEAP - kmalloc
 	// Write your code here, remove the panic and write your code
-	kpanic_into_prompt("kmalloc() is not implemented yet...!!");
+	//kpanic_into_prompt("kmalloc() is not implemented yet...!!");
 
 	// use "isKHeapPlacementStrategyFIRSTFIT() ..." functions to check the current strategy
+	if(isKHeapPlacementStrategyFIRSTFIT()) {
+		if(size <= 2048) {
+			return alloc_block_FF(size);
+		}
+	}
+
+	return NULL;
 
 }
 

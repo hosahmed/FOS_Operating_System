@@ -112,7 +112,7 @@ void* kmalloc(unsigned int size)
 		else
 		{
 			size = ROUNDUP(size, PAGE_SIZE);
-			uint32 noOfPagesToAllocate = size / 4096;//to see how many free frame needed
+			uint32 noOfPagesToAllocate = size / PAGE_SIZE;//to see how many free frame needed
 			uint32 iterator = hardLimit+PAGE_SIZE;
 			uint32 *ptr_table = NULL;
 			bool canAllock = 0;
@@ -120,9 +120,7 @@ void* kmalloc(unsigned int size)
 			while(iterator!= KERNEL_HEAP_MAX)
 			{
 
-				struct Frame_Info* ptr_frame_info = get_frame_info(ptr_page_directory, iterator, &ptr_table);
-
-				if(ptr_frame_info==NULL)
+				if(get_frame_info(ptr_page_directory, iterator, &ptr_table)==NULL)
 				{
 					countOfContinuesFrame++;
 					if(countOfContinuesFrame==noOfPagesToAllocate)
@@ -136,18 +134,20 @@ void* kmalloc(unsigned int size)
 					countOfContinuesFrame=0;
 				}
 
-				iterator += 4096;
+				iterator += PAGE_SIZE;
 			}
 
 			if(canAllock)
 			{
+				iterator -= (PAGE_SIZE*(noOfPagesToAllocate-1));
 				for (int i = 0; i < noOfPagesToAllocate; i++ )
 				{
 					struct FrameInfo *ptr_frame_info;
 					allocate_frame(&ptr_frame_info);
-					map_frame(ptr_page_directory, ptr_frame_info, iterator, PERM_USER | PERM_WRITEABLE);
-					iterator += 4096;
+					map_frame(ptr_page_directory, ptr_frame_info, iterator, PERM_WRITEABLE);
+					iterator += PAGE_SIZE;
 				}
+				return (void*)(iterator - (PAGE_SIZE*noOfPagesToAllocate));
 			}
 
 		}

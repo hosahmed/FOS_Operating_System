@@ -103,15 +103,61 @@ void* kmalloc(unsigned int size)
 	//TODO: [PROJECT'24.MS2 - #03] [1] KERNEL HEAP - kmalloc
 	// Write your code here, remove the panic and write your code
 	//kpanic_into_prompt("kmalloc() is not implemented yet...!!");
-
 	// use "isKHeapPlacementStrategyFIRSTFIT() ..." functions to check the current strategy
 	if(isKHeapPlacementStrategyFIRSTFIT()) {
-		if(size <= 2048) {
+		if(size <= DYN_ALLOC_MAX_BLOCK_SIZE) //2048
+		{
 			return alloc_block_FF(size);
+		}
+		else
+		{
+			size = ROUNDUP(size, PAGE_SIZE);
+			uint32 noOfPagesToAllocate = size / 4096;//to see how many free frame needed
+			uint32 iterator = hardLimit+PAGE_SIZE;
+			uint32 *ptr_table = NULL;
+			bool canAllock = 0;
+			int countOfContinuesFrame=0;
+			while(iterator!= KERNEL_HEAP_MAX)
+			{
+
+				struct Frame_Info* ptr_frame_info = get_frame_info(ptr_page_directory, iterator, &ptr_table);
+
+				if(ptr_frame_info==NULL)
+				{
+					countOfContinuesFrame++;
+					if(countOfContinuesFrame==noOfPagesToAllocate)
+					{
+						canAllock=1;
+						break;
+					}
+				}
+				else
+				{
+					countOfContinuesFrame=0;
+				}
+
+				iterator += 4096;
+			}
+
+			if(canAllock)
+			{
+				for (int i = 0; i < noOfPagesToAllocate; i++ )
+				{
+					struct FrameInfo *ptr_frame_info;
+					allocate_frame(&ptr_frame_info);
+					map_frame(ptr_page_directory, ptr_frame_info, iterator, PERM_USER | PERM_WRITEABLE);
+					iterator += 4096;
+				}
+			}
+
 		}
 	}
 
 	return NULL;
+	/*for fast allock(bonus) we will use a LinkedList of a Struct
+	 * and that LinkedList contain the all the the full Frames,
+	 * and that Struct contain the size and the start address of those Frames
+	 */
 
 }
 

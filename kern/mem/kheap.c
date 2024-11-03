@@ -130,32 +130,52 @@ void* kmalloc(unsigned int size)
 			uint32 noOfPagesToAllocate = size / PAGE_SIZE;//to see how many free frame needed
 			uint32 iterator = hardLimit+PAGE_SIZE;
 			uint32 *ptr_table = NULL;
-			bool canAllock = 0;
+			bool canAlloc = 0;
 			int countOfContinuesFrame=0;
-			while(iterator!= KERNEL_HEAP_MAX)
-			{
+			int choices = 0;
 
-				if(get_frame_info(ptr_page_directory, iterator, &ptr_table)==NULL)
+			if(block_count == 0) {
+				cprintf("\nHELLO THERE\n");
+				choices = 1;
+				if(size <= KERNEL_HEAP_MAX - hardLimit - PAGE_SIZE)
 				{
-					countOfContinuesFrame++;
-					if(countOfContinuesFrame==noOfPagesToAllocate)
-					{
-						canAllock=1;
+					iterator = hardLimit + PAGE_SIZE;
+					canAlloc = 1;
+					choices++;
+				}
+			}
+			if(choices == 0)
+			{
+				if(allocated_blocks[0].va - hardLimit - PAGE_SIZE >= size)
+				{
+					iterator = hardLimit + PAGE_SIZE;
+					canAlloc = 1;
+					choices++;
+				}
+			}
+			if(choices == 0)
+			{
+				for (uint32 i = 0; i < block_count - 1; i++)
+				{
+					if(allocated_blocks[i+1].va - (allocated_blocks[i].va + allocated_blocks[i].size) >= size) {
+						iterator = allocated_blocks[i].va + allocated_blocks[i].size;
+						canAlloc = 1;
+						choices++;
 						break;
 					}
 				}
-				else
+			}
+			if(choices == 0)
+			{
+				if(KERNEL_HEAP_MAX - (allocated_blocks[block_count - 1].va + allocated_blocks[block_count - 1].size) >= size)
 				{
-					countOfContinuesFrame=0;
+					iterator = allocated_blocks[block_count - 1].va + allocated_blocks[block_count - 1].size;
+					canAlloc = 1;
 				}
-
-				iterator += PAGE_SIZE;
 			}
 
-			if(canAllock)
+			if(canAlloc)
 			{
-				iterator -= (PAGE_SIZE*(noOfPagesToAllocate-1));
-
 				uint32 index = find_insert_index(iterator);
 
 				for (uint32 i = block_count; i > index; i--) {

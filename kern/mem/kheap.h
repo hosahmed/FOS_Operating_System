@@ -40,6 +40,18 @@ unsigned int kheap_physical_address(unsigned int virtual_address);
 
 int numOfKheapVACalls ;
 
+struct PageBlock {
+    uint32 va;
+    uint32 size;
+};
+
+#define MAX_BLOCKS 40959
+
+struct PageBlock allocated_blocks[MAX_BLOCKS];
+int block_count;
+
+uint32 find_insert_index(uint32 address);
+
 
 //TODO: [PROJECT'24.MS2 - #01] [1] KERNEL HEAP - add suitable code here
 uint32 start, segmentBreak, hardLimit;

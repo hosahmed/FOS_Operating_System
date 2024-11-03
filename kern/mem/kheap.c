@@ -96,6 +96,21 @@ void* sbrk(int numOfPages)
 	return (void*)oldSegBreak;
 }
 
+uint32 find_insert_index(uint32 address) {
+    uint32 low = 0;
+    uint32 high = block_count;
+
+    while (low < high) {
+        uint32 mid = low + (high - low) / 2;
+        if (allocated_blocks[mid].va < address) {
+            low = mid + 1;
+        } else {
+            high = mid;
+        }
+    }
+    return low;
+}
+
 //TODO: [PROJECT'24.MS2 - BONUS#2] [1] KERNEL HEAP - Fast Page Allocator
 
 void* kmalloc(unsigned int size)
@@ -140,6 +155,17 @@ void* kmalloc(unsigned int size)
 			if(canAllock)
 			{
 				iterator -= (PAGE_SIZE*(noOfPagesToAllocate-1));
+
+				uint32 index = find_insert_index(iterator);
+
+				for (uint32 i = block_count; i > index; i--) {
+					allocated_blocks[i] = allocated_blocks[i - 1];
+				}
+
+				allocated_blocks[index].va = iterator;
+				allocated_blocks[index].size = size;
+				block_count++;
+
 				for (int i = 0; i < noOfPagesToAllocate; i++ )
 				{
 					struct FrameInfo *ptr_frame_info;
@@ -147,9 +173,7 @@ void* kmalloc(unsigned int size)
 					map_frame(ptr_page_directory, ptr_frame_info, iterator, PERM_WRITEABLE);
 					iterator += PAGE_SIZE;
 				}
-				uint32 *ptrFrames =  (uint32*)(iterator - (PAGE_SIZE*noOfPagesToAllocate));
-				*ptrFrames = noOfPagesToAllocate;
-				cprintf("\nPages To Allocate = %d\n", noOfPagesToAllocate);
+
 				return (void*)(iterator - (PAGE_SIZE*noOfPagesToAllocate));
 			}
 
@@ -175,10 +199,18 @@ void kfree(void* virtual_address)
 	if(address > start && address < hardLimit) {
 		free_block(virtual_address);
 	} else if(address >= hardLimit + PAGE_SIZE && address < KERNEL_HEAP_MAX) {
-		uint32 noOfFrames = *((uint32*)virtual_address);
-		cprintf("\nNo of Frames = %d\n", noOfFrames);
 		uint32 iterator = address;
+		uint32 noOfFrames;
 
+		for (uint32 i = 0; i < block_count; i++) {
+			if (allocated_blocks[i].va == address) {
+				noOfFrames = allocated_blocks[i].size / PAGE_SIZE;
+				for (uint32 j = i; j < block_count - 1; j++) {
+					allocated_blocks[j] = allocated_blocks[j + 1];
+				}
+				block_count--;
+			}
+		}
 		for (int i = 0; i < noOfFrames; i++)
 		{
 			unmap_frame(ptr_page_directory, iterator);

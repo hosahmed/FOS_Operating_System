@@ -50,9 +50,6 @@ struct PageBlock {
 struct PageBlock allocated_blocks[MAX_BLOCKS];
 int block_count;
 
-uint32 find_insert_index(uint32 address);
-
-
 //TODO: [PROJECT'24.MS2 - #01] [1] KERNEL HEAP - add suitable code here
 uint32 start, segmentBreak, hardLimit;
 

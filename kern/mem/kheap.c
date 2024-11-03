@@ -75,9 +75,6 @@ void* sbrk(int numOfPages)
 
 	uint32* last_footer = (uint32*)(segmentBreak - 2*sizeof(int));
 	uint32 last_block_size = *last_footer - (*last_footer % 2 == 0 ? 0 : 1);
-
-//	cprintf("\n\nlast block size = %d\n\n", last_block_size);
-
 	void* last_block = (void*)(segmentBreak - last_block_size);
 
 	if(is_free_block(last_block)) {
@@ -94,21 +91,6 @@ void* sbrk(int numOfPages)
 	segmentBreak = iterator;
 
 	return (void*)oldSegBreak;
-}
-
-uint32 find_insert_index(uint32 address) {
-    uint32 low = 0;
-    uint32 high = block_count;
-
-    while (low < high) {
-        uint32 mid = low + (high - low) / 2;
-        if (allocated_blocks[mid].va < address) {
-            low = mid + 1;
-        } else {
-            high = mid;
-        }
-    }
-    return low;
 }
 
 //TODO: [PROJECT'24.MS2 - BONUS#2] [1] KERNEL HEAP - Fast Page Allocator
@@ -176,7 +158,18 @@ void* kmalloc(unsigned int size)
 
 			if(canAlloc)
 			{
-				uint32 index = find_insert_index(iterator);
+				uint32 low = 0;
+				uint32 high = block_count;
+
+				while (low < high) {
+					uint32 mid = low + (high - low) / 2;
+					if (allocated_blocks[mid].va < iterator) {
+						low = mid + 1;
+					} else {
+						high = mid;
+					}
+				}
+				uint32 index = low;
 
 				for (uint32 i = block_count; i > index; i--) {
 					allocated_blocks[i] = allocated_blocks[i - 1];

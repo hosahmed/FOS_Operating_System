@@ -213,15 +213,27 @@ void kfree(void* virtual_address)
 		uint32 iterator = address;
 		uint32 noOfFrames;
 
-		for (uint32 i = 0; i < block_count; i++) {
-			if (allocated_blocks[i].va == address) {
-				noOfFrames = allocated_blocks[i].size / PAGE_SIZE;
-				for (uint32 j = i; j < block_count - 1; j++) {
-					allocated_blocks[j] = allocated_blocks[j + 1];
+		int left = 0;
+		int right = block_count - 1;
+		int mid;
+
+		while (left <= right) {
+			mid = left + (right - left) / 2;
+
+			if (allocated_blocks[mid].va == address) {
+				noOfFrames = allocated_blocks[mid].size / PAGE_SIZE;
+				for (uint32 j = mid; j < block_count - 1; j++) {
+						allocated_blocks[j] = allocated_blocks[j + 1];
 				}
 				block_count--;
+				break;
+			} else if (allocated_blocks[mid].va < address) {
+				left = mid + 1;
+			} else {
+				right = mid - 1;
 			}
 		}
+
 		for (int i = 0; i < noOfFrames; i++)
 		{
 			unmap_frame(ptr_page_directory, iterator);

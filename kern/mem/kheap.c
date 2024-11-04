@@ -113,11 +113,9 @@ void* kmalloc(unsigned int size)
 			uint32 iterator = hardLimit+PAGE_SIZE;
 			uint32 *ptr_table = NULL;
 			bool canAlloc = 0;
-			int countOfContinuesFrame=0;
 			int choices = 0;
 
 			if(block_count == 0) {
-				cprintf("\nHELLO THERE\n");
 				choices = 1;
 				if(size <= KERNEL_HEAP_MAX - hardLimit - PAGE_SIZE)
 				{

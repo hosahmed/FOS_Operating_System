@@ -95,8 +95,14 @@ void* sbrk(int numOfPages)
 
 //TODO: [PROJECT'24.MS2 - BONUS#2] [1] KERNEL HEAP - Fast Page Allocator
 
-void* kmalloc(unsigned int size) {
-    if (isKHeapPlacementStrategyFIRSTFIT())
+void* kmalloc(unsigned int size)
+{
+	//TODO: [PROJECT'24.MS2 - #03] [1] KERNEL HEAP - kmalloc
+	// Write your code here, remove the panic and write your code
+	//kpanic_into_prompt("kmalloc() is not implemented yet...!!");
+	// use "isKHeapPlacementStrategyFIRSTFIT() ..." functions to check the current strategy
+
+	if (isKHeapPlacementStrategyFIRSTFIT())
     {
         if (size <= DYN_ALLOC_MAX_BLOCK_SIZE)
         {
@@ -173,23 +179,23 @@ void* kmalloc(unsigned int size) {
                     return NULL;
             }
 
-            uint32 low = 0;
-            uint32 high = block_count;
+            uint32 left = 0;
+            uint32 right = block_count;
 
-            while (low < high)
+            while (left < right)
             {
-                uint32 mid = low + (high - low) / 2 ;
+                uint32 mid = left + (right - left) / 2 ;
                 if (allocated_blocks[mid].va < allocationAddress)
                 {
-                    low = mid + 1;
+                	left = mid + 1;
                 }
                 else
                 {
-                    high = mid;
+                	right = mid;
                 }
             }
 
-            uint32 index = low;
+            uint32 index = left;
             memmove(&allocated_blocks[index + 1], &allocated_blocks[index], (block_count - index) * sizeof(struct PageBlock));
             allocated_blocks[index].va = allocationAddress;
             allocated_blocks[index].size = size;
@@ -203,14 +209,19 @@ void* kmalloc(unsigned int size) {
                 allocationAddress += PAGE_SIZE;
             }
 
-            return (void*)(allocationAddress - (PAGE_SIZE * noOfPagesToAllocate)); // Return the starting address of the allocated memory
+            return (void*)(allocationAddress - (PAGE_SIZE * noOfPagesToAllocate));
         }
     }
 
     return NULL;
 }
 
-void kfree(void* virtual_address) {
+void kfree(void* virtual_address)
+{
+	//TODO: [PROJECT'24.MS2 - #04] [1] KERNEL HEAP - kfree
+	// Write your code here, remove the panic and write your code
+	//panic("kfree() is not implemented yet...!!");
+
     uint32 address = (uint32)virtual_address;
 
     if (address > start && address < hardLimit)
@@ -262,11 +273,23 @@ void kfree(void* virtual_address) {
         newFreeBlock.va = address;
         newFreeBlock.size = size;
 
-        int insertIndex = 0;
-        while (insertIndex < free_count && free_blocks[insertIndex].va < newFreeBlock.va)
-        {
-            insertIndex++;
-        }
+        left = 0;
+		right = free_count - 1;
+		while (left <= right)
+		{
+			int mid = left + (right - left) / 2;
+
+			if (free_blocks[mid].va < newFreeBlock.va)
+			{
+				left = mid + 1;
+			}
+			else
+			{
+				right = mid - 1;
+			}
+		}
+
+		int insertIndex = left;
 
         if (free_count > 0 && insertIndex < free_count)
         {
@@ -311,6 +334,9 @@ void kfree(void* virtual_address) {
     {
         panic("invalid address");
     }
+
+    //you need to get the size of the given allocation using its address
+	//refer to the project presentation and documentation for details
 }
 
 unsigned int kheap_physical_address(unsigned int virtual_address)

@@ -40,6 +40,9 @@ unsigned int kheap_physical_address(unsigned int virtual_address);
 
 int numOfKheapVACalls ;
 
+//////////////////////////////////////////////////////
+// Fast Page Allocator Data Structures
+
 #define MAX_BLOCKS 40959
 
 struct PageBlock {
@@ -48,14 +51,16 @@ struct PageBlock {
 };
 
 struct FreeBlock {
+	uint32 va;
     uint32 size;
-    uint32 va;
 };
 
 struct PageBlock allocated_blocks[MAX_BLOCKS];
 struct FreeBlock free_blocks[MAX_BLOCKS];
 uint32 block_count;
 uint32 free_count;
+
+//////////////////////////////////////////////////////
 
 //TODO: [PROJECT'24.MS2 - #01] [1] KERNEL HEAP - add suitable code here
 uint32 start, segmentBreak, hardLimit;

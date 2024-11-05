@@ -343,8 +343,20 @@ unsigned int kheap_physical_address(unsigned int virtual_address)
 {
 	//TODO: [PROJECT'24.MS2 - #05] [1] KERNEL HEAP - kheap_physical_address
 	// Write your code here, remove the panic and write your code
-	panic("kheap_physical_address() is not implemented yet...!!");
+	uint32 *ptr_table ;
+	int w=get_page_table(ptr_page_directory, virtual_address, &ptr_table);
 
+	if (w==TABLE_NOT_EXIST)
+		return 0;
+
+	if(((ptr_table[PTX(virtual_address)] & PERM_PRESENT)))
+	{
+	      return (unsigned int) ((ptr_table[PTX(virtual_address)] ) & 0xFFFFF000) +(virtual_address & 0x00000FFF);
+	}
+	else
+	{
+		return 0;
+	}
 	//return the physical address corresponding to given virtual_address
 	//refer to the project presentation and documentation for details
 
@@ -355,8 +367,21 @@ unsigned int kheap_virtual_address(unsigned int physical_address)
 {
 	//TODO: [PROJECT'24.MS2 - #06] [1] KERNEL HEAP - kheap_virtual_address
 	// Write your code here, remove the panic and write your code
-	panic("kheap_virtual_address() is not implemented yet...!!");
 
+	//panic("kheap_virtual_address() is not implemented yet...!!");
+	struct FrameInfo* f= to_frame_info(physical_address);
+	uint32* ptr_page_table=NULL;
+	get_page_table(ptr_page_directory,f->va,&ptr_page_table);
+	int offset = physical_address & 0x00000FFF;
+
+	if(((f->va)+offset)>=KERNEL_HEAP_START&&((f->va)+offset)<=KERNEL_HEAP_MAX&&!(((f->va)+offset)>segmentBreak&&(f->va)+offset<hardLimit+PAGE_SIZE))
+	{
+		return (unsigned int)((f->va)+offset);
+	}
+	else
+	{
+		return 0;
+	}
 	//return the virtual address corresponding to given physical_address
 	//refer to the project presentation and documentation for details
 
@@ -373,7 +398,7 @@ unsigned int kheap_virtual_address(unsigned int physical_address)
 //	On failure, returns a null pointer, and the old virtual_address remains valid.
 
 //	A call with virtual_address = null is equivalent to kmalloc().
-//	A call with new_size = zero is equivalent to kfree().
+//	A call with new_size = zero is equivalent to kfree().
 
 void *krealloc(void *virtual_address, uint32 new_size)
 {

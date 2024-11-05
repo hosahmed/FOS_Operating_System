@@ -369,19 +369,24 @@ unsigned int kheap_virtual_address(unsigned int physical_address)
 	// Write your code here, remove the panic and write your code
 
 	//panic("kheap_virtual_address() is not implemented yet...!!");
-	struct FrameInfo* f= to_frame_info(physical_address);
-	uint32* ptr_page_table=NULL;
-	get_page_table(ptr_page_directory,f->va,&ptr_page_table);
+
 	int offset = physical_address & 0x00000FFF;
 
-	if(((f->va)+offset)>=KERNEL_HEAP_START&&((f->va)+offset)<=KERNEL_HEAP_MAX&&!(((f->va)+offset)>segmentBreak&&(f->va)+offset<hardLimit+PAGE_SIZE))
-	{
-		return (unsigned int)((f->va)+offset);
+	for(int i = 0 ; i < 1024 ; i++) {
+		uint32* ptr_page_table = (uint32*) (ptr_page_directory + i);
+		for(int j = 0 ; j < 1024 ; j++) {
+			if(ptr_page_table[j] & PERM_PRESENT) {
+				uint32 va = (i << 22) + (j << 12) + offset;
+
+				if(ptr_page_table[j] == (physical_address & 0xFFFFF000) && va >= KERNEL_HEAP_START && va <= KERNEL_HEAP_MAX && !(va > segmentBreak && va < hardLimit+PAGE_SIZE)) {
+					return va;
+				}
+			}
+		}
 	}
-	else
-	{
-		return 0;
-	}
+
+	return 0;
+
 	//return the virtual address corresponding to given physical_address
 	//refer to the project presentation and documentation for details
 

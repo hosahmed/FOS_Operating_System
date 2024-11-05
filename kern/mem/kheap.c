@@ -370,18 +370,27 @@ unsigned int kheap_virtual_address(unsigned int physical_address)
 
 	//panic("kheap_virtual_address() is not implemented yet...!!");
 
+
+//
+//	for(int i = 0 ; i < 1024 ; i++) {
+//		uint32* ptr_page_table = (uint32*) (ptr_page_directory + i);
+//		for(int j = 0 ; j < 1024 ; j++) {
+//			uint32* ptr_page_table_entry = (uint32*) (ptr_page_table + j);
+//			if(*ptr_page_table_entry & PERM_PRESENT) {
+//				uint32 va = (i << 22) + (j << 12) + offset;
+//				cprintf("expected %d, actual %d", physical_address, *ptr_page_table_entry);
+//				if(*ptr_page_table_entry == (physical_address & 0xFFFFF000)) {
+//					return va;
+//				}
+//			}
+//		}
+//	}
+
 	int offset = physical_address & 0x00000FFF;
 
-	for(int i = 0 ; i < 1024 ; i++) {
-		uint32* ptr_page_table = (uint32*) (ptr_page_directory + i);
-		for(int j = 0 ; j < 1024 ; j++) {
-			if(ptr_page_table[j] & PERM_PRESENT) {
-				uint32 va = (i << 22) + (j << 12) + offset;
-
-				if(ptr_page_table[j] == (physical_address & 0xFFFFF000) && va >= KERNEL_HEAP_START && va <= KERNEL_HEAP_MAX && !(va > segmentBreak && va < hardLimit+PAGE_SIZE)) {
-					return va;
-				}
-			}
+	for(int i = KERNEL_HEAP_START + offset; i < KERNEL_HEAP_MAX ; i += PAGE_SIZE) {
+		if(kheap_physical_address(i) == physical_address) {
+			return i;
 		}
 	}
 

@@ -99,7 +99,6 @@ void* kmalloc(unsigned int size)
 {
 	//TODO: [PROJECT'24.MS2 - #03] [1] KERNEL HEAP - kmalloc
 	// Write your code here, remove the panic and write your code
-	//kpanic_into_prompt("kmalloc() is not implemented yet...!!");
 	// use "isKHeapPlacementStrategyFIRSTFIT() ..." functions to check the current strategy
 
 	if (isKHeapPlacementStrategyFIRSTFIT())
@@ -137,9 +136,7 @@ void* kmalloc(unsigned int size)
 
                     for (uint32 i = 0; i < noOfPagesToAllocate; i++) {
                         struct FrameInfo *ptr_frame_info;
-                        if (allocate_frame(&ptr_frame_info) != 0) {
-                            return NULL;
-                        }
+                        allocate_frame(&ptr_frame_info);
                         map_frame(ptr_page_directory, ptr_frame_info, allocationAddress, PERM_WRITEABLE);
                         allocationAddress += PAGE_SIZE;
                     }
@@ -176,7 +173,7 @@ void* kmalloc(unsigned int size)
 
             if (!canAllocate)
             {
-                    return NULL;
+            	return NULL;
             }
 
             uint32 left = 0;
@@ -220,7 +217,6 @@ void kfree(void* virtual_address)
 {
 	//TODO: [PROJECT'24.MS2 - #04] [1] KERNEL HEAP - kfree
 	// Write your code here, remove the panic and write your code
-	//panic("kfree() is not implemented yet...!!");
 
     uint32 address = (uint32)virtual_address;
 
@@ -343,6 +339,7 @@ unsigned int kheap_physical_address(unsigned int virtual_address)
 {
 	//TODO: [PROJECT'24.MS2 - #05] [1] KERNEL HEAP - kheap_physical_address
 	// Write your code here, remove the panic and write your code
+
 	uint32 *ptr_table ;
 	int w=get_page_table(ptr_page_directory, virtual_address, &ptr_table);
 
@@ -368,29 +365,13 @@ unsigned int kheap_virtual_address(unsigned int physical_address)
 	//TODO: [PROJECT'24.MS2 - #06] [1] KERNEL HEAP - kheap_virtual_address
 	// Write your code here, remove the panic and write your code
 
-	//panic("kheap_virtual_address() is not implemented yet...!!");
-
-
-//
-//	for(int i = 0 ; i < 1024 ; i++) {
-//		uint32* ptr_page_table = (uint32*) (ptr_page_directory + i);
-//		for(int j = 0 ; j < 1024 ; j++) {
-//			uint32* ptr_page_table_entry = (uint32*) (ptr_page_table + j);
-//			if(*ptr_page_table_entry & PERM_PRESENT) {
-//				uint32 va = (i << 22) + (j << 12) + offset;
-//				cprintf("expected %d, actual %d", physical_address, *ptr_page_table_entry);
-//				if(*ptr_page_table_entry == (physical_address & 0xFFFFF000)) {
-//					return va;
-//				}
-//			}
-//		}
-//	}
-
 	int offset = physical_address & 0x00000FFF;
 
-	for(int i = KERNEL_HEAP_START + offset; i < KERNEL_HEAP_MAX ; i += PAGE_SIZE) {
-		if(kheap_physical_address(i) == physical_address) {
-			return i;
+	uint32 it = KERNEL_HEAP_START + offset;
+
+	for(int i = 0; i < 40959 ; i++) {
+		if(kheap_physical_address(it + i*PAGE_SIZE) == physical_address) {
+			return (unsigned int) (it + i*PAGE_SIZE);
 		}
 	}
 
@@ -418,6 +399,262 @@ void *krealloc(void *virtual_address, uint32 new_size)
 {
 	//TODO: [PROJECT'24.MS2 - BONUS#1] [1] KERNEL HEAP - krealloc
 	// Write your code here, remove the panic and write your code
+
+	// case 1
+	if(virtual_address == NULL)
+	{
+		return kmalloc(new_size);
+	}
+
+	// case 2
+	if(new_size == 0)
+	{
+		kfree(virtual_address);
+		return NULL;
+	}
+
+	// case 3
+	if(virtual_address == NULL && new_size == 0)
+	{
+		return NULL;
+	}
+
+	uint32 address = (uint32)virtual_address;
+
+	// va is in block allocator
+	if(address > start && address < hardLimit)
+	{
+		// block -> block (case 4)
+		if(new_size <= DYN_ALLOC_MAX_BLOCK_SIZE)
+		{
+			realloc_block_FF(virtual_address, new_size);
+		}
+		// block -> heap (case 5)
+		else
+		{
+			void* newVA = kmalloc(new_size);
+			if(newVA)
+			{
+				memcpy(newVA, virtual_address, get_block_size(virtual_address) - 8);
+				kfree(virtual_address);
+			}
+		}
+	}
+
+	// va is in page allocator
+	else if(address >= hardLimit + PAGE_SIZE && address < KERNEL_HEAP_MAX)
+	{
+		// heap -> block (case 6)
+		if(new_size <= DYN_ALLOC_MAX_BLOCK_SIZE)
+		{
+			void* newVA = kmalloc(new_size);
+			if(newVA)
+			{
+				memcpy(newVA, virtual_address, new_size);
+				kfree(virtual_address);
+			}
+		}
+		// heap -> heap (case 7)
+		else
+		{
+			new_size = ROUNDUP(new_size, PAGE_SIZE);
+
+			int left = 0;
+			int right = block_count - 1;
+			int allocatedBlockIndex = -1;
+			uint32 nextBlockVA;
+
+			while (left <= right)
+			{
+				int mid = left + (right - left) / 2;
+
+				if (allocated_blocks[mid].va == address)
+				{
+					allocatedBlockIndex = mid;
+					nextBlockVA = allocated_blocks[mid].va + allocated_blocks[mid].size;
+					break;
+				}
+				else if (allocated_blocks[mid].va < address)
+				{
+					left = mid + 1;
+				}
+				else
+				{
+					right = mid - 1;
+				}
+			}
+
+			// special case (there is no next block then reallocate and if done free the old heap space)
+			if(nextBlockVA == KERNEL_HEAP_MAX)
+			{
+				void* newVA = kmalloc(new_size);
+				if(newVA)
+				{
+					memcpy(newVA, virtual_address, (allocated_blocks[allocatedBlockIndex].size > new_size ? new_size : allocated_blocks[allocatedBlockIndex].size));
+					kfree(virtual_address);
+				}
+			}
+
+
+			// next block is allocated (case 7.1)
+			if(allocatedBlockIndex < block_count - 1 && allocated_blocks[allocatedBlockIndex+1].va == allocated_blocks[allocatedBlockIndex].va + allocated_blocks[allocatedBlockIndex].size)
+			{
+				// next block is allocated and size is equal (case 7.1.1)
+				if(allocated_blocks[allocatedBlockIndex].size == new_size) {
+					return NULL;
+				}
+				// next block is allocated and size is increased (case 7.1.2)
+				else if(allocated_blocks[allocatedBlockIndex].size < new_size)
+				{
+					void* newVA = kmalloc(new_size);
+					if(newVA)
+					{
+						memcpy(newVA, virtual_address, allocated_blocks[allocatedBlockIndex].size);
+						kfree(virtual_address);
+					}
+				}
+				// next block is allocated and size is decreased (case 7.1.3)
+				// then add a new free block in between after removing the extra space
+				else
+				{
+					int noOfFramesToDellaocate = (allocated_blocks[allocatedBlockIndex].size - new_size) / PAGE_SIZE;
+
+					struct FreeBlock newFreeBlock;
+					newFreeBlock.va = allocated_blocks[allocatedBlockIndex].va + new_size;
+					newFreeBlock.size = allocated_blocks[allocatedBlockIndex].size - new_size;
+
+					left = 0;
+					right = free_count - 1;
+					while (left <= right)
+					{
+						int mid = left + (right - left) / 2;
+
+						if (free_blocks[mid].va < newFreeBlock.va)
+						{
+							left = mid + 1;
+						}
+						else
+						{
+							right = mid - 1;
+						}
+					}
+
+					int insertIndex = left;
+
+					if (free_count > 0 && insertIndex < free_count)
+					{
+						memmove(&free_blocks[insertIndex + 1], &free_blocks[insertIndex],
+								(free_count - insertIndex) * sizeof(struct FreeBlock));
+					}
+					free_blocks[insertIndex] = newFreeBlock;
+					free_count++;
+
+					allocated_blocks[allocatedBlockIndex].size = new_size;
+
+					uint32 iterator = allocated_blocks[allocatedBlockIndex].va + allocated_blocks[allocatedBlockIndex].size;
+
+					for (uint32 i = 0; i < noOfFramesToDellaocate; i++)
+					{
+						unmap_frame(ptr_page_directory, iterator);
+						iterator += PAGE_SIZE;
+					}
+
+					return (void*) allocated_blocks[allocatedBlockIndex].va;
+				}
+			}
+			// next block is free (case 7.2)
+			else
+			{
+				int left = 0;
+				int right = block_count - 1;
+				int freeBlockIndex = -1;
+				while (left <= right)
+				{
+					int mid = left + (right - left) / 2;
+
+					if (free_blocks[mid].va == nextBlockVA)
+					{
+						freeBlockIndex = mid;
+						break;
+					}
+					else if (free_blocks[mid].va < nextBlockVA)
+					{
+						left = mid + 1;
+					}
+					else
+					{
+						right = mid - 1;
+					}
+				}
+				// next block is free and size is equal (case 7.2.1)
+				if(allocated_blocks[allocatedBlockIndex].size == new_size)
+				{
+					return (void*) allocated_blocks[allocatedBlockIndex].va;
+				}
+				// next block is free and size is increased (case 7.2.2)
+				else if(allocated_blocks[allocatedBlockIndex].size < new_size)
+				{
+					int noOfFramesToAllocate = new_size - allocated_blocks[allocatedBlockIndex].size;
+					uint32 iterator = allocated_blocks[allocatedBlockIndex].va + allocated_blocks[allocatedBlockIndex].size;
+					// can fit in
+					if(new_size <= allocated_blocks[allocatedBlockIndex].size + free_blocks[freeBlockIndex].size)
+					{
+						if (free_blocks[freeBlockIndex].size == new_size - allocated_blocks[allocatedBlockIndex].size)
+						{
+							memmove(&free_blocks[freeBlockIndex], &free_blocks[freeBlockIndex + 1], (free_count - freeBlockIndex - 1) * sizeof(struct FreeBlock));
+							free_count--;
+						}
+						else
+						{
+							free_blocks[freeBlockIndex].size -= (new_size - allocated_blocks[allocatedBlockIndex].size);
+							free_blocks[freeBlockIndex].va += (new_size - allocated_blocks[allocatedBlockIndex].size);
+						}
+
+						allocated_blocks[allocatedBlockIndex].size = new_size;
+
+						for (uint32 i = 0 ; i < noOfFramesToAllocate; i++)
+						{
+							struct FrameInfo *ptr_frame_info;
+							allocate_frame(&ptr_frame_info);
+							map_frame(ptr_page_directory, ptr_frame_info, iterator, PERM_WRITEABLE);
+							iterator += PAGE_SIZE;
+						}
+					}
+					// cannot fit
+					else
+					{
+						void* newVA = kmalloc(new_size);
+						if(newVA)
+						{
+							memcpy(newVA, virtual_address, allocated_blocks[allocatedBlockIndex].size);
+							kfree(virtual_address);
+						}
+					}
+				}
+				// next block is free and size is decreased (case 7.2.3)
+				else
+				{
+					int noOfFramesToDellaocate = (allocated_blocks[allocatedBlockIndex].size - new_size) / PAGE_SIZE;
+
+					free_blocks[freeBlockIndex].size += (allocated_blocks[allocatedBlockIndex].size - new_size);
+					free_blocks[freeBlockIndex].va -= (allocated_blocks[allocatedBlockIndex].size - new_size);
+
+					allocated_blocks[allocatedBlockIndex].size = new_size;
+
+					uint32 iterator = allocated_blocks[allocatedBlockIndex].va + allocated_blocks[allocatedBlockIndex].size;
+
+
+					for (uint32 i = 0; i < noOfFramesToDellaocate; i++)
+					{
+						unmap_frame(ptr_page_directory, iterator);
+						iterator += PAGE_SIZE;
+					}
+
+				}
+				return (void*) allocated_blocks[allocatedBlockIndex].va;
+			}
+		}
+	}
+
 	return NULL;
-	panic("krealloc() is not implemented yet...!!");
 }

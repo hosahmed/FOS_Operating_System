@@ -30,6 +30,7 @@ int initialize_kheap_dynamic_allocator(uint32 daStart, uint32 initSizeToAllocate
 		struct FrameInfo *ptr_frame_info;
 		allocate_frame(&ptr_frame_info);
 		map_frame(ptr_page_directory, ptr_frame_info, iterator, PERM_USER | PERM_WRITEABLE);
+		frames_virtual_addresses[(kheap_physical_address(iterator)/4096)]=iterator;
 		iterator += 4096;
 	}
 
@@ -70,6 +71,7 @@ void* sbrk(int numOfPages)
 		struct FrameInfo *ptr_frame_info;
 		allocate_frame(&ptr_frame_info);
 		map_frame(ptr_page_directory, ptr_frame_info, iterator, PERM_USER | PERM_WRITEABLE);
+		frames_virtual_addresses[(kheap_physical_address(iterator)/4096)]=iterator;
 		iterator += 4096;
 	}
 
@@ -138,6 +140,7 @@ void* kmalloc(unsigned int size)
                         struct FrameInfo *ptr_frame_info;
                         allocate_frame(&ptr_frame_info);
                         map_frame(ptr_page_directory, ptr_frame_info, allocationAddress, PERM_WRITEABLE);
+                        frames_virtual_addresses[(kheap_physical_address(allocationAddress)/4096)]=allocationAddress;
                         allocationAddress += PAGE_SIZE;
                     }
 
@@ -203,6 +206,7 @@ void* kmalloc(unsigned int size)
                 struct FrameInfo *ptr_frame_info;
                 allocate_frame(&ptr_frame_info);
                 map_frame(ptr_page_directory, ptr_frame_info, allocationAddress, PERM_WRITEABLE);
+                frames_virtual_addresses[(kheap_physical_address(allocationAddress)/4096)]=allocationAddress;
                 allocationAddress += PAGE_SIZE;
             }
 
@@ -223,6 +227,7 @@ void kfree(void* virtual_address)
     if (address > start && address < hardLimit)
     {
         free_block(virtual_address);
+        frames_virtual_addresses[(kheap_physical_address(address)/4096)]=0;
         return;
     }
     else if (address >= hardLimit + PAGE_SIZE && address < KERNEL_HEAP_MAX)
@@ -322,6 +327,7 @@ void kfree(void* virtual_address)
 
         for (uint32 i = 0; i < noOfFrames; i++)
         {
+        	frames_virtual_addresses[(kheap_physical_address(iterator)/4096)]=0;
             unmap_frame(ptr_page_directory, iterator);
             iterator += PAGE_SIZE;
         }
@@ -365,17 +371,14 @@ unsigned int kheap_virtual_address(unsigned int physical_address)
 	//TODO: [PROJECT'24.MS2 - #06] [1] KERNEL HEAP - kheap_virtual_address
 	// Write your code here, remove the panic and write your code
 
-	int offset = physical_address & 0x00000FFF;
+	//panic("kheap_virtual_address() is not implemented yet...!!");
 
-	uint32 it = KERNEL_HEAP_START + offset;
+	unsigned int obtained_offset=PGOFF(physical_address);
 
-	for(int i = 0; i < 40959 ; i++) {
-		if(kheap_physical_address(it + i*PAGE_SIZE) == physical_address) {
-			return (unsigned int) (it + i*PAGE_SIZE);
-		}
-	}
-
-	return 0;
+	if(frames_virtual_addresses[(physical_address/4096)] == 0)
+		return 0;
+	else
+		return frames_virtual_addresses[(physical_address/4096)]+obtained_offset;
 
 	//return the virtual address corresponding to given physical_address
 	//refer to the project presentation and documentation for details
@@ -555,6 +558,7 @@ void *krealloc(void *virtual_address, uint32 new_size)
 
 					for (uint32 i = 0; i < noOfFramesToDellaocate; i++)
 					{
+						frames_virtual_addresses[(kheap_physical_address(iterator)/4096)]=0;
 						unmap_frame(ptr_page_directory, iterator);
 						iterator += PAGE_SIZE;
 					}
@@ -617,6 +621,7 @@ void *krealloc(void *virtual_address, uint32 new_size)
 							struct FrameInfo *ptr_frame_info;
 							allocate_frame(&ptr_frame_info);
 							map_frame(ptr_page_directory, ptr_frame_info, iterator, PERM_WRITEABLE);
+							frames_virtual_addresses[(kheap_physical_address(iterator)/4096)]=iterator;
 							iterator += PAGE_SIZE;
 						}
 					}
@@ -646,6 +651,7 @@ void *krealloc(void *virtual_address, uint32 new_size)
 
 					for (uint32 i = 0; i < noOfFramesToDellaocate; i++)
 					{
+						frames_virtual_addresses[(kheap_physical_address(iterator)/4096)]=0;
 						unmap_frame(ptr_page_directory, iterator);
 						iterator += PAGE_SIZE;
 					}

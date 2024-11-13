@@ -41,10 +41,18 @@ unsigned int kheap_physical_address(unsigned int virtual_address);
 int numOfKheapVACalls ;
 
 //////////////////////////////////////////////////////
+// physical to virtual Data Structure
+
+#define NUMBER_OF_FRAMES 1048576
+uint32 frames_virtual_addresses[NUMBER_OF_FRAMES];
+
+//////////////////////////////////////////////////////
+
+
+//////////////////////////////////////////////////////
 // Fast Page Allocator Data Structures
 
 #define MAX_BLOCKS 40959
-#define NUMBER_OF_FRAMES 1048576
 
 struct PageBlock {
     uint32 va;
@@ -60,7 +68,6 @@ struct PageBlock allocated_blocks[MAX_BLOCKS];
 struct FreeBlock free_blocks[MAX_BLOCKS];
 uint32 block_count;
 uint32 free_count;
-uint32 frames_virtual_addresses[NUMBER_OF_FRAMES];
 
 //////////////////////////////////////////////////////
 

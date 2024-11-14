@@ -430,16 +430,18 @@ void *krealloc(void *virtual_address, uint32 new_size)
 		// block -> block (case 4)
 		if(new_size <= DYN_ALLOC_MAX_BLOCK_SIZE)
 		{
-			realloc_block_FF(virtual_address, new_size);
+			return realloc_block_FF(virtual_address, new_size);
 		}
 		// block -> heap (case 5)
 		else
 		{
+
 			void* newVA = kmalloc(new_size);
 			if(newVA)
 			{
 				memcpy(newVA, virtual_address, get_block_size(virtual_address) - 8);
 				kfree(virtual_address);
+				return newVA;
 			}
 		}
 	}
@@ -455,6 +457,7 @@ void *krealloc(void *virtual_address, uint32 new_size)
 			{
 				memcpy(newVA, virtual_address, new_size);
 				kfree(virtual_address);
+				return newVA;
 			}
 		}
 		// heap -> heap (case 7)
@@ -488,15 +491,20 @@ void *krealloc(void *virtual_address, uint32 new_size)
 			}
 
 			// special case (there is no next block then reallocate and if done free the old heap space)
-			if(nextBlockVA == KERNEL_HEAP_MAX && new_size > allocated_blocks[allocatedBlockIndex].size)
+			if(nextBlockVA == KERNEL_HEAP_MAX)
 			{
-				void* newVA = kmalloc(new_size);
-				if(newVA)
+				if(new_size > allocated_blocks[allocatedBlockIndex].size)
 				{
-					memcpy(newVA, virtual_address, allocated_blocks[allocatedBlockIndex].size);
-					kfree(virtual_address);
-					return newVA;
+					int copySize = allocated_blocks[allocatedBlockIndex].size;
+					void* newVA = kmalloc(new_size);
+					if(newVA)
+					{
+						memcpy(newVA, virtual_address, copySize);
+						kfree(virtual_address);
+						return newVA;
+					}
 				}
+				return NULL;
 			}
 
 
@@ -508,11 +516,13 @@ void *krealloc(void *virtual_address, uint32 new_size)
 				// next block is allocated and size is increased (case 7.1.2)
 				if(allocated_blocks[allocatedBlockIndex].size < new_size)
 				{
+					int copySize = allocated_blocks[allocatedBlockIndex].size
 					void* newVA = kmalloc(new_size);
 					if(newVA)
 					{
-						memcpy(newVA, virtual_address, allocated_blocks[allocatedBlockIndex].size);
+						memcpy(newVA, virtual_address, copySize);
 						kfree(virtual_address);
+						return newVA;
 					}
 				}
 				// next block is allocated and size is decreased (case 7.1.3)
@@ -622,10 +632,11 @@ void *krealloc(void *virtual_address, uint32 new_size)
 					// cannot fit in
 					else
 					{
+						int copySize = allocated_blocks[allocatedBlockIndex].size;
 						void* newVA = kmalloc(new_size);
 						if(newVA)
 						{
-							memcpy(newVA, virtual_address, allocated_blocks[allocatedBlockIndex].size);
+							memcpy(newVA, virtual_address, copySize);
 							kfree(virtual_address);
 							return newVA;
 						}

@@ -262,24 +262,38 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 		uint32 *ptr_table = NULL;
 		get_page_table(faulted_env->env_page_directory, (uint32)fault_va, &ptr_table);
 
-		if(!get_frame_info(faulted_env->env_page_directory, fault_va, &ptr_table)) {
-			cprintf("\nNOT ALLOCATED\n");
-		}
-
 		if (ret == E_PAGE_NOT_EXIST_IN_PF)
 		{
-			if (!((fault_va >= USER_HEAP_START && fault_va <= USER_HEAP_MAX) || (fault_va >= USTACKTOP && fault_va <= USTACKBOTTOM)))
+			if (!((fault_va >= USER_HEAP_START && fault_va < USER_HEAP_MAX) || (fault_va <= USTACKTOP - PAGE_SIZE && fault_va >= USTACKBOTTOM)))
 			{
+				cprintf("\nIF 1\n");
 				env_exit();
 			}
 			else
 			{
+				cprintf("\nIF 2\n");
 				pf_add_empty_env_page(faulted_env, fault_va, 0);
+				struct WorkingSetElement *newSetElementPtr = env_page_ws_list_create_element(faulted_env, fault_va);
+
+				LIST_INSERT_TAIL(&(faulted_env->page_WS_list), newSetElementPtr);
 			}
 		}
+		else
+		{
+			LIST_INSERT_TAIL(&(faulted_env->page_WS_list), (struct WorkingSetElement *)fault_va);
+		}
 
-		LIST_INSERT_TAIL(&(faulted_env->page_WS_list), (struct WorkingSetElement *)fault_va);
-		faulted_env->page_last_WS_index += sizeof(struct WorkingSetElement);
+		cprintf("\nIF DONE\n");
+
+		if(LIST_SIZE(&(faulted_env->page_WS_list)) == wsSize)
+		{
+			faulted_env->page_last_WS_index += (uint32) (LIST_LAST(&(faulted_env->page_WS_list)) + sizeof(struct WorkingSetElement));
+		}
+		else
+		{
+			faulted_env->page_last_WS_index = (uint32) NULL;
+		}
+
 //		panic("page_fault_handler() Placement is not implemented yet...!!");
 		//refer to the project presentation and documentation for details
 	}

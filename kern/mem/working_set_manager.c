@@ -26,11 +26,13 @@ inline struct WorkingSetElement* env_page_ws_list_create_element(struct Env* e, 
 	void * va = kmalloc(sizeof(struct WorkingSetElement));
 
 	if(va) {
-		struct WorkingSetElement * newSetElementPtr = (struct WorkingSetElement *) virtual_address;
-		*newSetElementPtr = newSetElement;
+		virtual_address = (uint32) va;
+//		struct WorkingSetElement * newSetElementPtr = (struct WorkingSetElement *) virtual_address;
+//		*newSetElementPtr = newSetElement;
+		return (struct WorkingSetElement *)va;
 	}
 
-	return va;
+	return NULL;
 
 }
 inline void env_page_ws_invalidate(struct Env* e, uint32 virtual_address)

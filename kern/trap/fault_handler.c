@@ -157,14 +157,14 @@ void fault_handler(struct Trapframe *tf)
 
 					if ((!(MO & PERM_WRITEABLE)) && (MO & PERM_PRESENT))
 					{
-						sched_kill_env(cur_env->env_id);
+						env_exit();
 						return;
 					}
 
 
 					if (CHECK_IF_KERNEL_ADDRESS(fault_va))
 					{
-						sched_kill_env(cur_env->env_id);
+						env_exit();
 						return;
 					}
 
@@ -176,7 +176,7 @@ void fault_handler(struct Trapframe *tf)
 
 						if (!(perm & PERM_AVAILABLE))
 						{
-							sched_kill_env(cur_env->env_id);
+							env_exit();
 							return;
 						}
 					}
@@ -256,10 +256,31 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 		//cprintf("PLACEMENT=========================WS Size = %d\n", wsSize );
 		//TODO: [PROJECT'24.MS2 - #09] [2] FAULT HANDLER I - Placement
 		// Write your code here, remove the panic and write your code
-		panic("page_fault_handler().PLACEMENT is not implemented yet...!!");
 
+		int ret = pf_read_env_page(faulted_env, (void*)fault_va);
 
+		uint32 *ptr_table = NULL;
+		get_page_table(faulted_env->env_page_directory, (uint32)fault_va, &ptr_table);
 
+		if(!get_frame_info(faulted_env->env_page_directory, fault_va, &ptr_table)) {
+			cprintf("\nNOT ALLOCATED\n");
+		}
+
+		if (ret == E_PAGE_NOT_EXIST_IN_PF)
+		{
+			if (!((fault_va >= USER_HEAP_START && fault_va <= USER_HEAP_MAX) || (fault_va >= USTACKTOP && fault_va <= USTACKBOTTOM)))
+			{
+				env_exit();
+			}
+			else
+			{
+				pf_add_empty_env_page(faulted_env, fault_va, 0);
+			}
+		}
+
+		LIST_INSERT_TAIL(&(faulted_env->page_WS_list), (struct WorkingSetElement *)fault_va);
+		faulted_env->page_last_WS_index += sizeof(struct WorkingSetElement);
+//		panic("page_fault_handler() Placement is not implemented yet...!!");
 		//refer to the project presentation and documentation for details
 	}
 	else

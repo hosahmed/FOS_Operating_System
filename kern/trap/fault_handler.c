@@ -146,14 +146,43 @@ void fault_handler(struct Trapframe *tf)
 	else
 	{
 		if (userTrap)
-		{
-			/*============================================================================================*/
-			//TODO: [PROJECT'24.MS2 - #08] [2] FAULT HANDLER I - Check for invalid pointers
-			//(e.g. pointing to unmarked user heap page, kernel or wrong access rights),
-			//your code is here
+				{
+					//============================================================================================/
+					//TODO: [PROJECT'24.MS2 - #08] [2] FAULT HANDLER I - Check for invalid pointers
+					//(e.g. pointing to unmarked user heap page, kernel or wrong access rights),
+					//your code is here
 
-			/*============================================================================================*/
-		}
+					uint32 MO = pt_get_page_permissions(cur_env->env_page_directory, fault_va);
+
+
+					if ((!(MO & PERM_WRITEABLE)) && (MO & PERM_PRESENT))
+					{
+						sched_kill_env(cur_env->env_id);
+						return;
+					}
+
+
+					if (CHECK_IF_KERNEL_ADDRESS(fault_va))
+					{
+						sched_kill_env(cur_env->env_id);
+						return;
+					}
+
+
+					if (fault_va >= USER_HEAP_START && fault_va <= USER_HEAP_MAX)
+					{
+						uint32 perm = pt_get_page_permissions(cur_env->env_page_directory, fault_va);
+
+
+						if (!(perm & PERM_AVAILABLE))
+						{
+							sched_kill_env(cur_env->env_id);
+							return;
+						}
+					}
+
+					//============================================================================================/
+				}
 
 		/*2022: Check if fault due to Access Rights */
 		int perms = pt_get_page_permissions(faulted_env->env_page_directory, fault_va);
@@ -228,6 +257,8 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 		//TODO: [PROJECT'24.MS2 - #09] [2] FAULT HANDLER I - Placement
 		// Write your code here, remove the panic and write your code
 		panic("page_fault_handler().PLACEMENT is not implemented yet...!!");
+
+
 
 		//refer to the project presentation and documentation for details
 	}

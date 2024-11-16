@@ -516,7 +516,7 @@ void *krealloc(void *virtual_address, uint32 new_size)
 				// next block is allocated and size is increased (case 7.1.2)
 				if(allocated_blocks[allocatedBlockIndex].size < new_size)
 				{
-					int copySize = allocated_blocks[allocatedBlockIndex].size
+					int copySize = allocated_blocks[allocatedBlockIndex].size;
 					void* newVA = kmalloc(new_size);
 					if(newVA)
 					{

@@ -259,22 +259,19 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 
 		int ret = pf_read_env_page(faulted_env, (void*)fault_va);
 
-		uint32 *ptr_table = NULL;
-		get_page_table(faulted_env->env_page_directory, (uint32)fault_va, &ptr_table);
 
 		if (ret == E_PAGE_NOT_EXIST_IN_PF)
 		{
-			if (!((fault_va >= USER_HEAP_START && fault_va < USER_HEAP_MAX) || (fault_va <= USTACKTOP - PAGE_SIZE && fault_va >= USTACKBOTTOM)))
+			// recheck the user stack range (user stack top - page_size)
+			// if the user heap from bottom to top and the user stack is vice versa
+			if (!((fault_va >= USER_HEAP_START && fault_va < USER_HEAP_MAX) || (fault_va >= USTACKBOTTOM && fault_va < USTACKTOP)))
 			{
-				cprintf("\nIF 1\n");
-				env_exit();
+			    cprintf("\nInvalid address: fault_va = %d\n", fault_va);
+			    env_exit();
 			}
 			else
 			{
-				cprintf("\nIF 2\n");
-				pf_add_empty_env_page(faulted_env, fault_va, 0);
 				struct WorkingSetElement *newSetElementPtr = env_page_ws_list_create_element(faulted_env, fault_va);
-
 				LIST_INSERT_TAIL(&(faulted_env->page_WS_list), newSetElementPtr);
 			}
 		}
@@ -283,18 +280,16 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 			LIST_INSERT_TAIL(&(faulted_env->page_WS_list), (struct WorkingSetElement *)fault_va);
 		}
 
-		cprintf("\nIF DONE\n");
-
-		if(LIST_SIZE(&(faulted_env->page_WS_list)) == wsSize)
+		if(LIST_SIZE(&(faulted_env->page_WS_list)) == faulted_env->page_WS_max_size)
 		{
-			faulted_env->page_last_WS_index += (uint32) (LIST_LAST(&(faulted_env->page_WS_list)) + sizeof(struct WorkingSetElement));
+			faulted_env->page_last_WS_element = LIST_FIRST(&(faulted_env->page_WS_list));
+			faulted_env->page_last_WS_element->virtual_address = (uint32) (LIST_FIRST(&(faulted_env->page_WS_list))->virtual_address);
 		}
 		else
 		{
-			faulted_env->page_last_WS_index = (uint32) NULL;
+			faulted_env->page_last_WS_element = NULL;
 		}
 
-//		panic("page_fault_handler() Placement is not implemented yet...!!");
 		//refer to the project presentation and documentation for details
 	}
 	else

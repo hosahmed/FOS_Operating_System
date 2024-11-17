@@ -21,18 +21,14 @@ inline struct WorkingSetElement* env_page_ws_list_create_element(struct Env* e, 
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
 	//panic("env_page_ws_list_create_element is not implemented yet");
 
-	struct WorkingSetElement newSetElement;
+	struct FrameInfo *ptr_frame_info;
+	allocate_frame(&ptr_frame_info);
+	map_frame(e->env_page_directory, ptr_frame_info, virtual_address, PERM_USER | PERM_WRITEABLE);
 
-	void * va = kmalloc(sizeof(struct WorkingSetElement));
+	struct WorkingSetElement * newSetElementPtr = kmalloc(sizeof(struct WorkingSetElement));
+	newSetElementPtr->virtual_address = virtual_address;
 
-	if(va) {
-		virtual_address = (uint32) va;
-//		struct WorkingSetElement * newSetElementPtr = (struct WorkingSetElement *) virtual_address;
-//		*newSetElementPtr = newSetElement;
-		return (struct WorkingSetElement *)va;
-	}
-
-	return NULL;
+	return newSetElementPtr;
 
 }
 inline void env_page_ws_invalidate(struct Env* e, uint32 virtual_address)
@@ -151,6 +147,7 @@ void env_page_ws_print(struct Env *e)
 		{
 			cprintf("EMPTY LOCATION\n");
 		}
+		cprintf("last WSE pointer : %d\n",e->page_last_WS_element);
 	}
 }
 #else

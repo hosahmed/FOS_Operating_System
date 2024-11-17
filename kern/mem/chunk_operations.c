@@ -138,12 +138,24 @@ void* sys_sbrk(int numOfPages)
 
 	//TODO: [PROJECT'24.MS2 - #11] [3] USER HEAP - sys_sbrk
 	/*====================================*/
-	/*Remove this line before start coding*/
-	return (void*)-1 ;
+
 	/*====================================*/
 	struct Env* env = get_cpu_proc(); //the current running Environment to adjust its break limit
+	void* ret = (void*)env->segment_break;
+	if (numOfPages == 0)
+		return ret;
 
-
+	if (numOfPages > 0)
+	{
+		if (env->segment_break + numOfPages*PAGE_SIZE > env->hard_limit || !LIST_SIZE(&MemFrameLists.free_frame_list) || LIST_SIZE(&MemFrameLists.free_frame_list) < numOfPages)
+			return (void*)-1;
+		env->segment_break += numOfPages*PAGE_SIZE;
+	}
+	else
+	{
+		return (void*)-1;
+	}
+	return ret;
 }
 
 //=====================================

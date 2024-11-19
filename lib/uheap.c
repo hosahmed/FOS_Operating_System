@@ -1,5 +1,32 @@
 #include <inc/lib.h>
 
+//////////////////////////////////////////////////////
+// Fast Page Allocator Structs
+
+#define ENV_MAX_BLOCKS NUM_OF_UHEAP_PAGES
+
+struct EnvPageBlock {
+	uint32 va;
+	uint32 size;
+};
+
+struct EnvFreeBlock {
+	uint32 va;
+	uint32 size;
+};
+
+//////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////
+// Fast Page Allocator Data Structures
+
+struct EnvPageBlock env_allocated_blocks[ENV_MAX_BLOCKS];
+struct EnvFreeBlock env_free_blocks[ENV_MAX_BLOCKS];
+uint32 env_block_count;
+uint32 env_free_count;
+
+//////////////////////////////////////////////////////
+
 //==================================================================================//
 //============================ REQUIRED FUNCTIONS ==================================//
 //==================================================================================//
@@ -24,7 +51,112 @@ void* malloc(uint32 size)
 	//==============================================================
 	//TODO: [PROJECT'24.MS2 - #12] [3] USER HEAP [USER SIDE] - malloc()
 	// Write your code here, remove the panic and write your code
-	panic("malloc() is not implemented yet...!!");
+
+	if (sys_isUHeapPlacementStrategyFIRSTFIT())
+	{
+		if (size <= DYN_ALLOC_MAX_BLOCK_SIZE)
+		{
+			return alloc_block_FF(size);
+		}
+		else
+		{
+
+			size = ROUNDUP(size, PAGE_SIZE);
+			uint32 noOfPagesToAllocate = size / PAGE_SIZE;
+			uint32 allocationAddress;
+			bool canAllocate = 0;
+
+			if (env_block_count == 0)
+			{
+				if (size <= USER_HEAP_MAX - myEnv->hard_limit - PAGE_SIZE)
+				{
+					allocationAddress = myEnv->hard_limit + PAGE_SIZE;
+					env_allocated_blocks[0].va = allocationAddress;
+					env_allocated_blocks[0].size = size;
+					env_block_count = 1;
+
+					if (size < USER_HEAP_MAX - myEnv->hard_limit - PAGE_SIZE)
+					{
+						env_free_blocks[0].va = allocationAddress + size;
+						env_free_blocks[0].size = (USER_HEAP_MAX - myEnv->hard_limit - PAGE_SIZE) - size;
+						env_free_count = 1;
+					}
+					else
+					{
+						env_free_count = 0;
+					}
+
+					sys_allocate_user_mem(env_allocated_blocks[0].va, size);
+
+					return (void*)(env_allocated_blocks[0].va);
+				}
+				else
+				{
+					return NULL;
+				}
+			}
+
+			for (uint32 i = 0; i < env_free_count; i++)
+			{
+				if (env_free_blocks[i].size >= size)
+				{
+					allocationAddress = env_free_blocks[i].va;
+
+					if (env_free_blocks[i].size == size)
+					{
+						for (int j = i; j < env_free_count - 1; j++) {
+							env_free_blocks[j] = env_free_blocks[j + 1];
+						}
+						env_free_count--;
+					}
+					else
+					{
+						env_free_blocks[i].size -= size;
+						env_free_blocks[i].va += size;
+					}
+
+					canAllocate = 1;
+					break;
+				}
+			}
+
+			if (!canAllocate)
+			{
+				return NULL;
+			}
+
+			uint32 left = 0;
+			uint32 right = env_block_count;
+
+			while (left < right)
+			{
+				uint32 mid = left + (right - left) / 2 ;
+				if (env_allocated_blocks[mid].va < allocationAddress)
+				{
+					left = mid + 1;
+				}
+				else
+				{
+					right = mid;
+				}
+			}
+
+			uint32 index = left;
+			for (int j = env_block_count; j > index; j--) {
+				env_allocated_blocks[j] = env_allocated_blocks[j - 1];
+			}
+			env_allocated_blocks[index].va = allocationAddress;
+			env_allocated_blocks[index].size = size;
+			env_block_count++;
+
+			// MARKING
+			sys_allocate_user_mem(allocationAddress, size);
+
+
+			return (void*) allocationAddress;
+		}
+	}
+
 	return NULL;
 	//Use sys_isUHeapPlacementStrategyFIRSTFIT() and	sys_isUHeapPlacementStrategyBESTFIT()
 	//to check the current strategy

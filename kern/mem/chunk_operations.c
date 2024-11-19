@@ -171,7 +171,17 @@ void allocate_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 
 	//TODO: [PROJECT'24.MS2 - #13] [3] USER HEAP [KERNEL SIDE] - allocate_user_mem()
 	// Write your code here, remove the panic and write your code
-	panic("allocate_user_mem() is not implemented yet...!!");
+	//panic("allocate_user_mem() is not implemented yet...!!");
+	for(int va = virtual_address; va < virtual_address + ROUNDUP(size,PAGE_SIZE); va += PAGE_SIZE)
+	{
+		uint32* ptr_page_table = NULL;
+		get_page_table(e->env_page_directory, virtual_address, &ptr_page_table);
+		if(!ptr_page_table){
+			create_page_table(e->env_page_directory, virtual_address);
+		}
+	}
+
+	return;
 }
 
 //=====================================
@@ -215,4 +225,3 @@ void move_user_mem(struct Env* e, uint32 src_virtual_address, uint32 dst_virtual
 //=================================================================================//
 //========================== END USER CHUNKS MANIPULATION =========================//
 //=================================================================================//
-

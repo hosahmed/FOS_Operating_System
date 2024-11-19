@@ -56,6 +56,7 @@ void* malloc(uint32 size)
 	{
 		if (size <= DYN_ALLOC_MAX_BLOCK_SIZE)
 		{
+			sys_allocate_user_mem(myEnv->start, myEnv->hard_limit - myEnv->start);
 			return alloc_block_FF(size);
 		}
 		else
@@ -170,7 +171,113 @@ void free(void* virtual_address)
 {
 	//TODO: [PROJECT'24.MS2 - #14] [3] USER HEAP [USER SIDE] - free()
 	// Write your code here, remove the panic and write your code
-	panic("free() is not implemented yet...!!");
+
+	uint32 address = (uint32)virtual_address;
+
+	    if (address > myEnv->start && address < myEnv->hard_limit)
+	    {
+	        free_block(virtual_address);
+	        return;
+	    }
+	    else if (address >= myEnv->hard_limit + PAGE_SIZE && address < USER_HEAP_MAX)
+	    {
+	        uint32 iterator = address;
+	        uint32 noOfFrames = 0;
+	        uint32 size = 0;
+	        int index = -1;
+
+	        int left = 0;
+	        int right = env_block_count - 1;
+	        while (left <= right)
+	        {
+	            int mid = left + (right - left) / 2;
+
+	            if (env_allocated_blocks[mid].va == address)
+	            {
+	                noOfFrames = env_allocated_blocks[mid].size / PAGE_SIZE;
+	                size = env_allocated_blocks[mid].size;
+	                index = mid;
+
+	                memmove(&env_allocated_blocks[mid], &env_allocated_blocks[mid + 1],
+	                        (env_block_count - mid - 1) * sizeof(struct EnvPageBlock));
+	                env_block_count--;
+	                break;
+	            }
+	            else if (env_allocated_blocks[mid].va < address)
+	            {
+	                left = mid + 1;
+	            }
+	            else
+	            {
+	                right = mid - 1;
+	            }
+	        }
+
+	        if (index == -1)
+	        {
+	            panic("Invalid address: Block not found in allocated_blocks");
+	            return;
+	        }
+
+	        struct EnvFreeBlock newFreeBlock;
+	        newFreeBlock.va = address;
+	        newFreeBlock.size = size;
+
+	        left = 0;
+			right = env_free_count - 1;
+			while (left <= right)
+			{
+				int mid = left + (right - left) / 2;
+
+				if (env_free_blocks[mid].va < newFreeBlock.va)
+				{
+					left = mid + 1;
+				}
+				else
+				{
+					right = mid - 1;
+				}
+			}
+
+			int insertIndex = left;
+
+	        if (env_free_count > 0 && insertIndex < env_free_count)
+	        {
+	            memmove(&env_free_blocks[insertIndex + 1], &env_free_blocks[insertIndex],
+	                    (env_free_count - insertIndex) * sizeof(struct EnvFreeBlock));
+	        }
+	        env_free_blocks[insertIndex] = newFreeBlock;
+	        env_free_count++;
+
+	        if (insertIndex > 0)
+	        {
+	            struct EnvFreeBlock* prevBlock = &env_free_blocks[insertIndex - 1];
+	            if (prevBlock->va + prevBlock->size == newFreeBlock.va)
+	            {
+	                prevBlock->size += newFreeBlock.size;
+	                memmove(&env_free_blocks[insertIndex], &env_free_blocks[insertIndex + 1],
+	                        (env_free_count - insertIndex - 1) * sizeof(struct EnvFreeBlock));
+	                env_free_count--;
+	                insertIndex--;
+	            }
+	        }
+
+	        if (insertIndex < env_free_count - 1)
+	        {
+	            struct EnvFreeBlock* nextBlock = &env_free_blocks[insertIndex + 1];
+	            if (newFreeBlock.va + newFreeBlock.size == nextBlock->va)
+	            {
+	            	env_free_blocks[insertIndex].size += nextBlock->size;
+	                memmove(&env_free_blocks[insertIndex + 1], &env_free_blocks[insertIndex + 2],
+	                        (env_free_count - insertIndex - 2) * sizeof(struct EnvFreeBlock));
+	                env_free_count--;
+	            }
+	        }
+	    }
+	    else
+	    {
+	        panic("invalid address");
+	    }
 }
 
 

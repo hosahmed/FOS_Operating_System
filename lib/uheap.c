@@ -56,7 +56,7 @@ void* malloc(uint32 size)
 	{
 		if (size <= DYN_ALLOC_MAX_BLOCK_SIZE)
 		{
-			sys_allocate_user_mem(myEnv->start, myEnv->hard_limit - myEnv->start);
+//			sys_allocate_user_mem(myEnv->start, myEnv->hard_limit - myEnv->start);
 			return alloc_block_FF(size);
 		}
 		else
@@ -87,9 +87,15 @@ void* malloc(uint32 size)
 						env_free_count = 0;
 					}
 
-					sys_allocate_user_mem(env_allocated_blocks[0].va, size);
+					uint32 tmp = allocationAddress;
 
-					return (void*)(env_allocated_blocks[0].va);
+					cprintf("allocated address = %d", allocationAddress);
+
+					sys_allocate_user_mem(tmp, size);
+
+					cprintf("allocated address = %d", allocationAddress);
+
+					return (void*) allocationAddress;
 				}
 				else
 				{
@@ -150,8 +156,10 @@ void* malloc(uint32 size)
 			env_allocated_blocks[index].size = size;
 			env_block_count++;
 
+			uint32 tmp = allocationAddress;
+
 			// MARKING
-			sys_allocate_user_mem(allocationAddress, size);
+			sys_allocate_user_mem(tmp, size);
 
 
 			return (void*) allocationAddress;

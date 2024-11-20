@@ -180,10 +180,10 @@ void fault_handler(struct Trapframe *tf)
 							env_exit();
 							return;
 						}
-//						if(ptr_page_table[PTX(fault_va)] != fault_va) {
-//							env_exit();
-//							return;
-//						}
+						if(ptr_page_table[PTX(fault_va)] != fault_va) {
+							env_exit();
+							return;
+						}
 
 					}
 

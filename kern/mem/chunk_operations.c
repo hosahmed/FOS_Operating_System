@@ -174,14 +174,13 @@ void allocate_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 	//panic("allocate_user_mem() is not implemented yet...!!");
 	for(int va = virtual_address; va < virtual_address + ROUNDUP(size,PAGE_SIZE); va += PAGE_SIZE)
 	{
-
 		uint32* ptr_page_table = NULL;
 		get_page_table(e->env_page_directory, va, &ptr_page_table);
 		if(!ptr_page_table){
-			create_page_table(e->env_page_directory, va);
+			ptr_page_table = create_page_table(e->env_page_directory, va);
 		}
 		// to check marking in page fault handler
-		//ptr_page_table[PTX(va)] = va;
+		ptr_page_table[PTX(va)] = PERM_AVAILABLE;
 	}
 
 	return;

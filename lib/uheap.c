@@ -87,13 +87,7 @@ void* malloc(uint32 size)
 						env_free_count = 0;
 					}
 
-					uint32 tmp = allocationAddress;
-
-					cprintf("allocated address = %d", allocationAddress);
-
-					sys_allocate_user_mem(tmp, size);
-
-					cprintf("allocated address = %d", allocationAddress);
+					sys_allocate_user_mem(allocationAddress, size);
 
 					return (void*) allocationAddress;
 				}
@@ -156,10 +150,8 @@ void* malloc(uint32 size)
 			env_allocated_blocks[index].size = size;
 			env_block_count++;
 
-			uint32 tmp = allocationAddress;
-
 			// MARKING
-			sys_allocate_user_mem(tmp, size);
+			sys_allocate_user_mem(allocationAddress, size);
 
 
 			return (void*) allocationAddress;

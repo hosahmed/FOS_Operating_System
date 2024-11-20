@@ -156,7 +156,6 @@ void fault_handler(struct Trapframe *tf)
 
 					if ((!(MO & PERM_WRITEABLE)) && (MO & PERM_PRESENT))
 					{
-						cprintf("\nHELLO1\n");
 						env_exit();
 						return;
 					}
@@ -164,7 +163,6 @@ void fault_handler(struct Trapframe *tf)
 
 					if (CHECK_IF_KERNEL_ADDRESS(fault_va))
 					{
-						cprintf("\nHELLO2\n");
 						env_exit();
 						return;
 					}
@@ -176,14 +174,13 @@ void fault_handler(struct Trapframe *tf)
 						get_page_table(cur_env->env_page_directory, (uint32) fault_va, &ptr_page_table);
 						if(ptr_page_table == NULL)
 						{
-							cprintf("\nHELLO3\n");
 							env_exit();
 							return;
 						}
-//						if(ptr_page_table[PTX(fault_va)] != fault_va) {
-//							env_exit();
-//							return;
-//						}
+						if(ptr_page_table[PTX(fault_va)] != PERM_AVAILABLE) {
+							env_exit();
+							return;
+						}
 
 					}
 
@@ -272,7 +269,6 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 			// if the user heap from bottom to top and the user stack is vice versa
 			if (!((fault_va >= USER_HEAP_START && fault_va < USER_HEAP_MAX) || (fault_va >= USTACKBOTTOM && fault_va < USTACKTOP)))
 			{
-			    cprintf("\nInvalid address: fault_va = %d\n", fault_va);
 			    env_exit();
 			}
 			else

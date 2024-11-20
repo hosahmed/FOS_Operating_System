@@ -145,16 +145,16 @@ void* sys_sbrk(int numOfPages)
 	if (numOfPages == 0)
 		return ret;
 
-	if (numOfPages > 0)
-	{
-		if (env->segment_break + numOfPages*PAGE_SIZE > env->hard_limit || !LIST_SIZE(&MemFrameLists.free_frame_list) || LIST_SIZE(&MemFrameLists.free_frame_list) < numOfPages)
-			return (void*)-1;
-		env->segment_break += numOfPages*PAGE_SIZE;
-	}
-	else
-	{
+	if (env->segment_break + numOfPages*PAGE_SIZE > env->hard_limit || !LIST_SIZE(&MemFrameLists.free_frame_list))
 		return (void*)-1;
-	}
+	env->segment_break += numOfPages*PAGE_SIZE;
+
+//	uint32* beginBlock = (uint32*)(env->start);
+//	uint32* endBlock = (uint32*)(env->segment_break - sizeof(int));
+//
+//	*beginBlock = 1;
+//	*endBlock = 1;
+
 	return ret;
 }
 
@@ -172,7 +172,7 @@ void allocate_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 	//TODO: [PROJECT'24.MS2 - #13] [3] USER HEAP [KERNEL SIDE] - allocate_user_mem()
 	// Write your code here, remove the panic and write your code
 	//panic("allocate_user_mem() is not implemented yet...!!");
-	for(int va = virtual_address; va < virtual_address + ROUNDUP(size,PAGE_SIZE); va += PAGE_SIZE)
+	for(uint32 va = virtual_address; va < virtual_address + ROUNDUP(size,PAGE_SIZE); va += PAGE_SIZE)
 	{
 		uint32* ptr_page_table = NULL;
 		get_page_table(e->env_page_directory, va, &ptr_page_table);
@@ -199,7 +199,27 @@ void free_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 
 	//TODO: [PROJECT'24.MS2 - #15] [3] USER HEAP [KERNEL SIDE] - free_user_mem
 	// Write your code here, remove the panic and write your code
-	panic("free_user_mem() is not implemented yet...!!");
+	//panic("free_user_mem() is not implemented yet...!!");
+
+	for(uint32 va = virtual_address; va < virtual_address + ROUNDUP(size,PAGE_SIZE) ; va += PAGE_SIZE)
+	{
+	    unmap_frame(e->env_page_directory, va);
+	    uint32* ptr_page_table = NULL;
+	    get_page_table(e->env_page_directory, va, &ptr_page_table);
+	    ptr_page_table[PTX(va)] = 0;
+
+	    struct WorkingSetElement *wsElement;
+	    LIST_FOREACH(wsElement, &(e->page_WS_list))
+	    {
+	    	if(ROUNDDOWN(wsElement->virtual_address, PAGE_SIZE) == ROUNDDOWN(va, PAGE_SIZE))
+	    	{
+				LIST_REMOVE(&(e->page_WS_list), wsElement);
+				kfree(wsElement);
+				pf_remove_env_page(e, ROUNDDOWN(va, PAGE_SIZE));
+				break;
+	    	}
+	    }
+	}
 
 
 	//TODO: [PROJECT'24.MS2 - BONUS#3] [3] USER HEAP [KERNEL SIDE] - O(1) free_user_mem

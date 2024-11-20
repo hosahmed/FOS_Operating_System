@@ -37,6 +37,7 @@ uint32 env_free_count;
 /*2023*/
 void* sbrk(int increment)
 {
+	cprintf("\nSBRK CALLED!!\n");
 	return (void*) sys_sbrk(increment);
 }
 
@@ -56,7 +57,7 @@ void* malloc(uint32 size)
 	{
 		if (size <= DYN_ALLOC_MAX_BLOCK_SIZE)
 		{
-//			sys_allocate_user_mem(myEnv->start, myEnv->hard_limit - myEnv->start);
+			sys_allocate_user_mem(myEnv->start, myEnv->hard_limit - myEnv->start);
 			return alloc_block_FF(size);
 		}
 		else
@@ -273,6 +274,9 @@ void free(void* virtual_address)
 	                env_free_count--;
 	            }
 	        }
+
+	        sys_free_user_mem(address, size);
+
 	    }
 	    else
 	    {

@@ -146,46 +146,46 @@ void fault_handler(struct Trapframe *tf)
 	else
 	{
 		if (userTrap)
+		{
+			//============================================================================================/
+			//TODO: [PROJECT'24.MS2 - #08] [2] FAULT HANDLER I - Check for invalid pointers
+			//(e.g. pointing to unmarked user heap page, kernel or wrong access rights),
+			//your code is here
+			uint32 MO = pt_get_page_permissions(cur_env->env_page_directory, fault_va);
+
+
+			if ((!(MO & PERM_WRITEABLE)) && (MO & PERM_PRESENT))
+			{
+				env_exit();
+				return;
+			}
+
+
+			if (CHECK_IF_KERNEL_ADDRESS(fault_va))
+			{
+				env_exit();
+				return;
+			}
+
+
+			if (fault_va >= USER_HEAP_START && fault_va <= USER_HEAP_MAX)
+			{
+				uint32* ptr_page_table = NULL;
+				get_page_table(cur_env->env_page_directory, (uint32) fault_va, &ptr_page_table);
+				if(ptr_page_table == NULL)
 				{
-					//============================================================================================/
-					//TODO: [PROJECT'24.MS2 - #08] [2] FAULT HANDLER I - Check for invalid pointers
-					//(e.g. pointing to unmarked user heap page, kernel or wrong access rights),
-					//your code is here
-					uint32 MO = pt_get_page_permissions(cur_env->env_page_directory, fault_va);
-
-
-					if ((!(MO & PERM_WRITEABLE)) && (MO & PERM_PRESENT))
-					{
-						env_exit();
-						return;
-					}
-
-
-					if (CHECK_IF_KERNEL_ADDRESS(fault_va))
-					{
-						env_exit();
-						return;
-					}
-
-
-					if (fault_va >= USER_HEAP_START && fault_va <= USER_HEAP_MAX)
-					{
-						uint32* ptr_page_table = NULL;
-						get_page_table(cur_env->env_page_directory, (uint32) fault_va, &ptr_page_table);
-						if(ptr_page_table == NULL)
-						{
-							env_exit();
-							return;
-						}
-						if(ptr_page_table[PTX(fault_va)] != PERM_AVAILABLE) {
-							env_exit();
-							return;
-						}
-
-					}
-
-					//============================================================================================/
+					env_exit();
+					return;
 				}
+				if(!(fault_va >= faulted_env->start && fault_va < faulted_env->hard_limit) && ptr_page_table[PTX(fault_va)] != PERM_AVAILABLE) {
+					env_exit();
+					return;
+				}
+
+			}
+
+			//============================================================================================/
+		}
 
 		/*2022: Check if fault due to Access Rights */
 		int perms = pt_get_page_permissions(faulted_env->env_page_directory, fault_va);

@@ -21,8 +21,6 @@ inline struct WorkingSetElement* env_page_ws_list_create_element(struct Env* e, 
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
 	//panic("env_page_ws_list_create_element is not implemented yet");
 
-	//virtual_address = ROUNDDOWN(virtual_address, PAGE_SIZE);
-
 	struct FrameInfo *ptr_frame_info;
 	allocate_frame(&ptr_frame_info);
 	map_frame(e->env_page_directory, ptr_frame_info, virtual_address, PERM_USER | PERM_WRITEABLE);

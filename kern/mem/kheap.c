@@ -66,7 +66,6 @@ void* sbrk(int numOfPages)
 	if(hardLimit < segmentBreak + 4096*numOfPages || !LIST_SIZE(&MemFrameLists.free_frame_list))
 		return (void*)-1;
 
-
 	for (int i = 0; i < numOfPages; i++){
 		struct FrameInfo *ptr_frame_info;
 		allocate_frame(&ptr_frame_info);
@@ -74,21 +73,6 @@ void* sbrk(int numOfPages)
 		frames_virtual_addresses[(kheap_physical_address(iterator)/4096)]=iterator;
 		iterator += 4096;
 	}
-
-	uint32* last_footer = (uint32*)(segmentBreak - 2*sizeof(int));
-	uint32 last_block_size = *last_footer - (*last_footer % 2 == 0 ? 0 : 1);
-	void* last_block = (void*)(segmentBreak - last_block_size);
-
-	if(is_free_block(last_block)) {
-		set_block_data(last_block, get_block_size(last_block) + 4096*numOfPages,0);
-	} else {
-		set_block_data((void*)oldSegBreak, 4096*numOfPages,0);
-		LIST_INSERT_TAIL(&(freeBlocksList),(struct BlockElement*)(void*)oldSegBreak);
-	}
-
-	uint32* endBlock = (uint32*)(iterator - sizeof(int));
-
-	*endBlock = 1;
 
 	segmentBreak = iterator;
 

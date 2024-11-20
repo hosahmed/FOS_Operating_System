@@ -177,7 +177,8 @@ void fault_handler(struct Trapframe *tf)
 					env_exit();
 					return;
 				}
-				if(!(fault_va >= faulted_env->start && fault_va < faulted_env->hard_limit) && ptr_page_table[PTX(fault_va)] != PERM_AVAILABLE) {
+				if(!(ptr_page_table[PTX(fault_va)] & PERM_AVAILABLE)) {
+
 					env_exit();
 					return;
 				}

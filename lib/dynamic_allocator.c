@@ -172,6 +172,7 @@ void *alloc_block_FF(uint32 size)
 	{
 	    if(get_block_size(element) >= size + 2*sizeof(int))
 	    {
+
 	        if(get_block_size(element) - size - 2*sizeof(int) >= 16) {
 	            struct BlockElement* new_free_block = (struct BlockElement*)((void*)element + size + 2*sizeof(int));
 	            LIST_INSERT_AFTER(&(freeBlocksList), element, new_free_block);
@@ -184,13 +185,42 @@ void *alloc_block_FF(uint32 size)
 	            set_block_data(element, get_block_size(element), 1);
 	            LIST_REMOVE(&(freeBlocksList), element);
 	        }
-
 	        return (void*)element;
 	    }
 	}
 
-	if(sbrk(ROUNDUP(size + 2*sizeof(int), PAGE_SIZE) / 4096) == (void*)-1)
+	int numOfPages = ROUNDUP(size + 2*sizeof(int), PAGE_SIZE) / PAGE_SIZE;
+
+	uint32* segment_break = sbrk(numOfPages);
+	uint32* newEndBlock = sbrk(0) - sizeof(int);
+
+	if(segment_break == (void*)-1)
 	    return NULL;
+
+	if(LIST_SIZE(&(freeBlocksList)) > 0)
+	{
+
+		uint32* last_block_footer = (uint32*)((void*)segment_break - 2*sizeof(int));
+		uint32 last_block_size = (*last_block_footer % 2 == 0 ? *last_block_footer : *last_block_footer - 1);
+		uint32* last_block = (uint32*)((void*)last_block_footer - last_block_size + 2*sizeof(int));
+		if(*last_block_footer % 2 == 0){
+			set_block_data((void*) last_block, PAGE_SIZE*numOfPages + last_block_size, 0);
+		}
+		else {
+			uint32* last_free_block = segment_break;
+			set_block_data((void*) last_free_block, PAGE_SIZE*numOfPages, 0);
+			LIST_INSERT_TAIL(&(freeBlocksList),(struct BlockElement*) last_free_block);
+		}
+	}
+
+	else
+	{
+		uint32* last_free_block = segment_break;
+		set_block_data((void*) last_free_block, PAGE_SIZE*numOfPages, 0);
+		LIST_INSERT_TAIL(&(freeBlocksList),(struct BlockElement*) last_free_block);
+	}
+
+	*newEndBlock = 1;
 
 	return alloc_block_FF(size);
 

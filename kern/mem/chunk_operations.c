@@ -145,17 +145,17 @@ void* sys_sbrk(int numOfPages)
 	if (numOfPages == 0)
 		return ret;
 
-	if (env->segment_break + numOfPages*PAGE_SIZE > env->hard_limit || !LIST_SIZE(&MemFrameLists.free_frame_list))
-		return (void*)-1;
-	env->segment_break += numOfPages*PAGE_SIZE;
+	if (numOfPages > 0)
+	{
+		if (env->segment_break + numOfPages*PAGE_SIZE > env->hard_limit || !LIST_SIZE(&MemFrameLists.free_frame_list) || LIST_SIZE(&MemFrameLists.free_frame_list) < numOfPages)
+			return (void*)-1;
+		env->segment_break += numOfPages*PAGE_SIZE;
 
-//	uint32* beginBlock = (uint32*)(env->start);
-//	uint32* endBlock = (uint32*)(env->segment_break - sizeof(int));
-//
-//	*beginBlock = 1;
-//	*endBlock = 1;
+		return ret;
+	}
 
-	return ret;
+	return (void*)-1;
+
 }
 
 //=====================================
@@ -180,8 +180,10 @@ void allocate_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 			ptr_page_table = create_page_table(e->env_page_directory, va);
 		}
 		// to check marking in page fault handler
-		ptr_page_table[PTX(va)] = PERM_AVAILABLE;
+		// this line may cause problem if allocate_user_mem is used before malloc()
+		ptr_page_table[PTX(va)] = ptr_page_table[PTX(va)] | PERM_AVAILABLE;
 	}
+
 
 	return;
 }

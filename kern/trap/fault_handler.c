@@ -168,7 +168,7 @@ void fault_handler(struct Trapframe *tf)
 			}
 
 
-			if (fault_va >= USER_HEAP_START && fault_va <= USER_HEAP_MAX)
+			if (fault_va >= USER_HEAP_START && fault_va < USER_HEAP_MAX)
 			{
 				uint32* ptr_page_table = NULL;
 				get_page_table(cur_env->env_page_directory, (uint32) fault_va, &ptr_page_table);

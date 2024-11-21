@@ -66,8 +66,23 @@ inline struct FrameInfo** create_frames_storage(int numOfFrames)
 {
 	//TODO: [PROJECT'24.MS2 - #16] [4] SHARED MEMORY - create_frames_storage()
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("create_frames_storage is not implemented yet");
-	//Your Code is Here...
+	//panic("create_frames_storage is not implemented yet");
+
+
+	//need to be review
+	struct FrameInfo** ArrSharedFrames = kmalloc(sizeof(int)*numOfFrames);
+
+	for (int i=0;i<numOfFrames;i++)
+	{
+		ArrSharedFrames[i]=0;
+	}
+
+	if(ArrSharedFrames==NULL)
+	{
+
+		return NULL;
+	}
+	return ArrSharedFrames;
 
 }
 
@@ -81,8 +96,36 @@ struct Share* create_share(int32 ownerID, char* shareName, uint32 size, uint8 is
 {
 	//TODO: [PROJECT'24.MS2 - #16] [4] SHARED MEMORY - create_share()
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("create_share is not implemented yet");
-	//Your Code is Here...
+	//panic("create_share is not implemented yet");
+
+
+
+	//need to be review
+	uint32 RoundUpsize= ROUNDUP(size, PAGE_SIZE);
+
+	struct Share* sharedObject = kmalloc(sizeof(struct Share));
+
+	sharedObject->ID= (uint32)sharedObject & 0x7FFFFFFF;
+	sharedObject->framesStorage = create_frames_storage(RoundUpsize/PAGE_SIZE);
+	sharedObject->isWritable = isWritable;
+
+	for(int i=0;i<strlen(shareName) ;i++)
+	{
+		sharedObject->name[i]=shareName[i];
+	}
+
+	sharedObject->ownerID = ownerID;
+	sharedObject->references = 1;
+	sharedObject->size = size;
+
+	if(sharedObject== NULL)
+	{
+		kfree((void*)sharedObject);
+
+		return NULL;
+	}
+
+	return sharedObject;
 
 }
 
@@ -97,9 +140,24 @@ struct Share* get_share(int32 ownerID, char* name)
 {
 	//TODO: [PROJECT'24.MS2 - #17] [4] SHARED MEMORY - get_share()
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("get_share is not implemented yet");
-	//Your Code is Here...
+	//panic("get_share is not implemented yet");
 
+	// check if the time of this code consider long or smoll
+	// may not need lock in this func bec of search at the time of deleting
+	acquire_spinlock(&(AllShares.shareslock));
+	struct Share* sharedObjectInList;
+	LIST_FOREACH(sharedObjectInList,&(AllShares.shares_list))
+	{
+		if(sharedObjectInList->ownerID == ownerID && strcmp(sharedObjectInList->name,name)==0 && strlen(sharedObjectInList->name) == strlen(name))
+		{
+			release_spinlock(&(AllShares.shareslock));
+			return sharedObjectInList;
+		}
+	}
+
+	release_spinlock(&(AllShares.shareslock));
+
+	return NULL;
 }
 
 //=========================
@@ -109,10 +167,50 @@ int createSharedObject(int32 ownerID, char* shareName, uint32 size, uint8 isWrit
 {
 	//TODO: [PROJECT'24.MS2 - #19] [4] SHARED MEMORY [KERNEL SIDE] - createSharedObject()
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("createSharedObject is not implemented yet");
+	//panic("createSharedObject is not implemented yet");
 	//Your Code is Here...
 
-	struct Env* myenv = get_cpu_proc(); //The calling environment
+	size = ROUNDUP(size, PAGE_SIZE);
+	struct Env* myenv = get_cpu_proc();
+
+	if(get_share(ownerID,shareName)!=NULL)
+	{
+		return E_SHARED_MEM_EXISTS;
+	}
+
+	if(myenv->counterForSharedObj == 100)
+	{
+		return E_NO_SHARE;
+	}
+
+	struct Share* SharedObj = create_share(ownerID,shareName,size,isWritable);
+
+	if(SharedObj== NULL)
+	{
+		return E_NO_SHARE;
+	}
+
+	acquire_spinlock(&(AllShares.shareslock));
+	LIST_INSERT_TAIL(&(AllShares.shares_list),SharedObj);
+	release_spinlock(&(AllShares.shareslock));
+
+	uint32 noOfPagesToAllocate = size/PAGE_SIZE;
+
+	// Allocating
+	for (uint32 i = 0 ; i < noOfPagesToAllocate; i++)
+	{
+		struct FrameInfo *ptr_frame_info;
+		allocate_frame(&ptr_frame_info);
+		map_frame(myenv->env_page_directory, ptr_frame_info, (uint32)virtual_address, PERM_WRITEABLE | PERM_USER);
+
+		SharedObj->framesStorage[i] = ptr_frame_info;
+		virtual_address += PAGE_SIZE;
+	}
+
+	myenv->counterForSharedObj++;
+
+	return SharedObj->ID;
+
 }
 
 

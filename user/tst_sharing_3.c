@@ -45,17 +45,17 @@ _main(void)
 	}
 	if (is_correct)	eval+=35;
 	is_correct = 1;
-//
-//	cprintf("STEP B: checking getting shared object that is NOT exists... [35%]\n\n");
-//	{
-//		int ret ;
-//		x = sget(myEnv->env_id, "xx");
-//		int freeFrames = sys_calculate_free_frames() ;
-//		if (x != NULL) {is_correct = 0; cprintf("Trying to get a NON existing object and corresponding error is not returned!!");}
-//		if ((freeFrames - sys_calculate_free_frames()) !=  0) {is_correct = 0; cprintf("Wrong get: make sure that you don't allocate any memory if the shared object not exists");}
-//	}
-//	if (is_correct)	eval+=35;
-//	is_correct = 1;
+
+	cprintf("STEP B: checking getting shared object that is NOT exists... [35%]\n\n");
+	{
+		int ret ;
+		x = sget(myEnv->env_id, "xx");
+		int freeFrames = sys_calculate_free_frames() ;
+		if (x != NULL) {is_correct = 0; cprintf("Trying to get a NON existing object and corresponding error is not returned!!");}
+		if ((freeFrames - sys_calculate_free_frames()) !=  0) {is_correct = 0; cprintf("Wrong get: make sure that you don't allocate any memory if the shared object not exists");}
+	}
+	if (is_correct)	eval+=35;
+	is_correct = 1;
 
 	cprintf("STEP C: checking the creation of shared object that exceeds the SHARED area limit... [30%]\n\n");
 	{

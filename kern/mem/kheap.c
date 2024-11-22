@@ -250,7 +250,6 @@ void kfree(void* virtual_address)
 
         if (index == -1)
         {
-            panic("Invalid address: Block not found in allocated_blocks");
             return;
         }
 
@@ -388,13 +387,13 @@ void *krealloc(void *virtual_address, uint32 new_size)
 	// Write your code here, remove the panic and write your code
 
 	// case 1
-	if(virtual_address == NULL)
+	if(virtual_address == NULL && new_size != 0)
 	{
 		return kmalloc(new_size);
 	}
 
 	// case 2
-	if(new_size == 0)
+	if(virtual_address != NULL && new_size == 0)
 	{
 		kfree(virtual_address);
 		return NULL;
@@ -414,11 +413,16 @@ void *krealloc(void *virtual_address, uint32 new_size)
 		// block -> block (case 4)
 		if(new_size <= DYN_ALLOC_MAX_BLOCK_SIZE)
 		{
-			return realloc_block_FF(virtual_address, new_size);
+			if(!is_free_block(virtual_address))
+				return realloc_block_FF(virtual_address, new_size);
+			else
+				return NULL;
 		}
-		// block -> heap (case 5)
+		// block -> page (case 5)
 		else
 		{
+			if(is_free_block(virtual_address))
+				return NULL;
 
 			void* newVA = kmalloc(new_size);
 			if(newVA)
@@ -427,13 +431,17 @@ void *krealloc(void *virtual_address, uint32 new_size)
 				kfree(virtual_address);
 				return newVA;
 			}
+			else
+			{
+				return NULL;
+			}
 		}
 	}
 
 	// va is in page allocator
 	else if(address >= hardLimit + PAGE_SIZE && address < KERNEL_HEAP_MAX)
 	{
-		// heap -> block (case 6)
+		// page -> block (case 6)
 		if(new_size <= DYN_ALLOC_MAX_BLOCK_SIZE)
 		{
 			void* newVA = kmalloc(new_size);
@@ -444,10 +452,15 @@ void *krealloc(void *virtual_address, uint32 new_size)
 				return newVA;
 			}
 		}
-		// heap -> heap (case 7)
+		// page -> page (case 7)
 		else
 		{
 			new_size = ROUNDUP(new_size, PAGE_SIZE);
+
+			if(new_size > KERNEL_HEAP_MAX - hardLimit - PAGE_SIZE)
+			{
+				return NULL;
+			}
 
 			int left = 0;
 			int right = block_count - 1;
@@ -474,6 +487,11 @@ void *krealloc(void *virtual_address, uint32 new_size)
 				}
 			}
 
+			if(allocatedBlockIndex == -1)
+			{
+				return NULL;
+			}
+
 			// special case (there is no next block then reallocate and if done free the old heap space)
 			if(nextBlockVA == KERNEL_HEAP_MAX)
 			{
@@ -488,6 +506,51 @@ void *krealloc(void *virtual_address, uint32 new_size)
 						return newVA;
 					}
 				}
+				else if(new_size < allocated_blocks[allocatedBlockIndex].size)
+				{
+					int noOfFramesToDellaocate = (allocated_blocks[allocatedBlockIndex].size - new_size) / PAGE_SIZE;
+
+					struct FreeBlock newFreeBlock;
+					newFreeBlock.va = allocated_blocks[allocatedBlockIndex].va + new_size;
+					newFreeBlock.size = allocated_blocks[allocatedBlockIndex].size - new_size;
+
+					left = 0;
+					right = free_count - 1;
+					while (left <= right)
+					{
+						int mid = left + (right - left) / 2;
+
+						if (free_blocks[mid].va < newFreeBlock.va)
+						{
+							left = mid + 1;
+						}
+						else
+						{
+							right = mid - 1;
+						}
+					}
+
+					int insertIndex = left;
+
+					if (free_count > 0 && insertIndex < free_count)
+					{
+						memmove(&free_blocks[insertIndex + 1], &free_blocks[insertIndex],
+								(free_count - insertIndex) * sizeof(struct FreeBlock));
+					}
+					free_blocks[insertIndex] = newFreeBlock;
+					free_count++;
+
+					allocated_blocks[allocatedBlockIndex].size = new_size;
+
+					uint32 iterator = allocated_blocks[allocatedBlockIndex].va + allocated_blocks[allocatedBlockIndex].size;
+
+					for (uint32 i = 0; i < noOfFramesToDellaocate; i++)
+					{
+						frames_virtual_addresses[(kheap_physical_address(iterator)/4096)]=0;
+						unmap_frame(ptr_page_directory, iterator);
+						iterator += PAGE_SIZE;
+					}
+				}
 				return NULL;
 			}
 
@@ -496,7 +559,10 @@ void *krealloc(void *virtual_address, uint32 new_size)
 			else if(allocatedBlockIndex < block_count - 1 && allocated_blocks[allocatedBlockIndex+1].va == allocated_blocks[allocatedBlockIndex].va + allocated_blocks[allocatedBlockIndex].size)
 			{
 				// next block is allocated and size is equal do nothing(case 7.1.1)
-
+				if(allocated_blocks[allocatedBlockIndex].size == new_size)
+				{
+					return NULL;
+				}
 				// next block is allocated and size is increased (case 7.1.2)
 				if(allocated_blocks[allocatedBlockIndex].size < new_size)
 				{
@@ -555,6 +621,7 @@ void *krealloc(void *virtual_address, uint32 new_size)
 						unmap_frame(ptr_page_directory, iterator);
 						iterator += PAGE_SIZE;
 					}
+					return virtual_address;
 				}
 			}
 			// next block is free (case 7.2)
@@ -582,7 +649,10 @@ void *krealloc(void *virtual_address, uint32 new_size)
 					}
 				}
 				// next block is free and size is equal do nothing (case 7.2.1)
-
+				if(allocated_blocks[allocatedBlockIndex].size == new_size)
+				{
+					return NULL;
+				}
 				// next block is free and size is increased (case 7.2.2)
 				if(allocated_blocks[allocatedBlockIndex].size < new_size)
 				{

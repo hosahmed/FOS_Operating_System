@@ -221,10 +221,48 @@ int getSharedObject(int32 ownerID, char* shareName, void* virtual_address)
 {
 	//TODO: [PROJECT'24.MS2 - #21] [4] SHARED MEMORY [KERNEL SIDE] - getSharedObject()
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("getSharedObject is not implemented yet");
+	//panic("getSharedObject is not implemented yet");
 	//Your Code is Here...
 
-	struct Env* myenv = get_cpu_proc(); //The calling environment
+
+	struct Env* myenv = get_cpu_proc();//The calling environment
+	struct Share* SharedObj= get_share(ownerID,shareName);
+
+	if(SharedObj==NULL)
+	{
+		return E_SHARED_MEM_NOT_EXISTS;
+	}
+	SharedObj->references+=1;
+	int sizeRoundUp= ROUNDUP(SharedObj->size,PAGE_SIZE);
+	int nbOfFrame = sizeRoundUp/PAGE_SIZE;
+
+	bool checkWritable;
+	if(SharedObj->isWritable==1)
+	{
+		checkWritable=1;
+	}
+	else
+	{
+		checkWritable=0;
+	}
+
+	for(int i=0;i<nbOfFrame;i++)
+	{
+		if(checkWritable)
+		{
+			//int map_frame(uint32 *ptr_page_directory, struct FrameInfo *ptr_frame_info, uint32 virtual_address, int perm)
+			map_frame(myenv->env_page_directory, SharedObj->framesStorage[i], (uint32)virtual_address, PERM_WRITEABLE | PERM_USER);
+		}
+		else
+		{
+			map_frame(myenv->env_page_directory, SharedObj->framesStorage[i], (uint32)virtual_address, PERM_USER);
+		}
+
+		virtual_address+=PAGE_SIZE;
+	}
+
+	return SharedObj->ID;
+
 }
 
 //==================================================================================//

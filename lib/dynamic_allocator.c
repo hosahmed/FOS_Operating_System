@@ -372,6 +372,7 @@ void *realloc_block_FF(void* va, uint32 new_size)
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
 	//panic("realloc_block_FF is not implemented yet");
 	//Your Code is Here...
+
 	if(va != NULL && new_size == 0)
 	{
 		free_block(va);
@@ -388,6 +389,11 @@ void *realloc_block_FF(void* va, uint32 new_size)
 		if (new_size < DYN_ALLOC_MIN_BLOCK_SIZE) //ensure that the size is at least 8 bytes
 			new_size = DYN_ALLOC_MIN_BLOCK_SIZE;
 
+		if(new_size == get_block_size(va))
+		{
+			return va;
+		}
+
 		if(new_size + 8 > get_block_size(va))//increase size
 		{
 			void *forward_block_ptr=va;
@@ -397,11 +403,12 @@ void *realloc_block_FF(void* va, uint32 new_size)
 
 			if(is_free_block(forward_block_ptr)) // the block after is free
 			{
-				if((forward_block_size-difference_needed)<0)//case 1(free block size is insufficient)
+				if(forward_block_size < difference_needed)//case 1(free block size is insufficient)
 				{// relocate and copy data
 					void *new_block = alloc_block_FF(new_size);
 				    memcpy(new_block, va, get_block_size(va) - 8);
 				    free_block(va);
+				    return new_block;
 				}
 				else if(forward_block_size-difference_needed<16)//case 2(free block size is sufficient but the remaining size can not be used)
 				{
@@ -440,6 +447,7 @@ void *realloc_block_FF(void* va, uint32 new_size)
 				void *new_block = alloc_block_FF(new_size);
 			    memcpy(new_block, va, get_block_size(va) - 8);
 			    free_block(va);
+			    return new_block;
 			}
 			forward_block_ptr=NULL;
 		}
@@ -477,7 +485,6 @@ void *realloc_block_FF(void* va, uint32 new_size)
 			}
 			else if(difference_needed>=16) //there is no free block in front of us so we will check if the decreased size is sufficient for a new free block
 			{
-				int x = 3,y=1;
 				uint32* reset_foot=(uint32*)forward_block_ptr,*reset_head=(uint32*)va;
 				reset_foot-=2;
 				*reset_foot=0;

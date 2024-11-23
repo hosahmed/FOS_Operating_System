@@ -71,6 +71,13 @@ uint32 free_count;
 
 //////////////////////////////////////////////////////
 
+//////////////////////////////////////////////////////
+// free_user_mem O(1)
+
+//uint32 WorkingSetVA[(0xA0000000 - 0x80000000 - (32<<20) - 4096)/4096];
+uint32 WorkingSetVA[1048576];
+/////////////////////////////////////////////////////
+
 //TODO: [PROJECT'24.MS2 - #01] [1] KERNEL HEAP - add suitable code here
 uint32 start, segmentBreak, hardLimit;
 

@@ -296,7 +296,6 @@ void* smalloc(char *sharedVarName, uint32 size, uint8 isWritable)
 	// Write your code here, remove the panic and write your code
 	//panic("smalloc() is not implemented yet...!!");
 
-
 	if(sys_isUHeapPlacementStrategyFIRSTFIT())
 	{
 		size = ROUNDUP(size, PAGE_SIZE);
@@ -442,7 +441,7 @@ void* sget(int32 ownerEnvID, char *sharedVarName)
 				{
 					env_free_count = 0;
 				}
-				//int sys_getSharedObject(int32 ownerID, char* shareName, void* virtual_address)
+
 				int Tst = sys_getSharedObject(ownerEnvID, sharedVarName,(void*)allocationAddress);
 
 				//check the return of Tst

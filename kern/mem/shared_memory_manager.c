@@ -105,6 +105,13 @@ struct Share* create_share(int32 ownerID, char* shareName, uint32 size, uint8 is
 
 	struct Share* sharedObject = kmalloc(sizeof(struct Share));
 
+	if(sharedObject== NULL)
+	{
+		kfree((void*)sharedObject);
+
+		return NULL;
+	}
+
 	sharedObject->ID= (uint32)sharedObject & 0x7FFFFFFF;
 	sharedObject->framesStorage = create_frames_storage(RoundUpsize/PAGE_SIZE);
 	sharedObject->isWritable = isWritable;
@@ -118,12 +125,6 @@ struct Share* create_share(int32 ownerID, char* shareName, uint32 size, uint8 is
 	sharedObject->references = 1;
 	sharedObject->size = size;
 
-	if(sharedObject== NULL)
-	{
-		kfree((void*)sharedObject);
-
-		return NULL;
-	}
 
 	return sharedObject;
 
@@ -143,7 +144,7 @@ struct Share* get_share(int32 ownerID, char* name)
 	//panic("get_share is not implemented yet");
 
 	// check if the time of this code consider long or smoll
-	// may not need lock in this func bec of search at the time of deleting
+	// may need lock in this func bec of search at the time of deleting
 	acquire_spinlock(&(AllShares.shareslock));
 	struct Share* sharedObjectInList;
 	LIST_FOREACH(sharedObjectInList,&(AllShares.shares_list))
@@ -237,6 +238,7 @@ int getSharedObject(int32 ownerID, char* shareName, void* virtual_address)
 	int nbOfFrame = sizeRoundUp/PAGE_SIZE;
 
 	bool checkWritable;
+
 	if(SharedObj->isWritable==1)
 	{
 		checkWritable=1;
@@ -250,7 +252,6 @@ int getSharedObject(int32 ownerID, char* shareName, void* virtual_address)
 	{
 		if(checkWritable)
 		{
-			//int map_frame(uint32 *ptr_page_directory, struct FrameInfo *ptr_frame_info, uint32 virtual_address, int perm)
 			map_frame(myenv->env_page_directory, SharedObj->framesStorage[i], (uint32)virtual_address, PERM_WRITEABLE | PERM_USER);
 		}
 		else

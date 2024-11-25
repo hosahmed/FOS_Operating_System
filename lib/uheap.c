@@ -22,6 +22,7 @@ struct EnvFreeBlock {
 
 struct EnvPageBlock env_allocated_blocks[ENV_MAX_BLOCKS];
 struct EnvFreeBlock env_free_blocks[ENV_MAX_BLOCKS];
+uint32 sharedObjectsIDs[NUM_OF_UHEAP_PAGES];
 uint32 env_block_count;
 uint32 env_free_count;
 
@@ -395,6 +396,8 @@ void* smalloc(char *sharedVarName, uint32 size, uint8 isWritable)
 		{
 			return NULL;
 		}
+		sharedObjectsIDs[allocationAddress/PAGE_SIZE]=Tst;
+
 		return (void*)allocationAddress;
 	}
 	return NULL;
@@ -542,7 +545,10 @@ void sfree(void* virtual_address)
 {
 	//TODO: [PROJECT'24.MS2 - BONUS#4] [4] SHARED MEMORY [USER SIDE] - sfree()
 	// Write your code here, remove the panic and write your code
-	panic("sfree() is not implemented yet...!!");
+	//panic("sfree() is not implemented yet...!!");
+	uint32 sharedVarID=sharedObjectsIDs[((uint32)virtual_address)/PAGE_SIZE];
+	sys_freeSharedObject(sharedVarID,virtual_address);
+
 }
 
 

@@ -72,16 +72,16 @@ inline struct FrameInfo** create_frames_storage(int numOfFrames)
 	//need to be review
 	struct FrameInfo** ArrSharedFrames = kmalloc(sizeof(int)*numOfFrames);
 
+	if(ArrSharedFrames==NULL)
+	{
+		return NULL;
+	}
 	for (int i=0;i<numOfFrames;i++)
 	{
 		ArrSharedFrames[i]=0;
 	}
 
-	if(ArrSharedFrames==NULL)
-	{
 
-		return NULL;
-	}
 	return ArrSharedFrames;
 
 }
@@ -107,14 +107,18 @@ struct Share* create_share(int32 ownerID, char* shareName, uint32 size, uint8 is
 
 	if(sharedObject== NULL)
 	{
-		kfree((void*)sharedObject);
-
 		return NULL;
 	}
 
 	sharedObject->ID= (uint32)sharedObject & 0x7FFFFFFF;
 	sharedObject->framesStorage = create_frames_storage(RoundUpsize/PAGE_SIZE);
 	sharedObject->isWritable = isWritable;
+
+	if(sharedObject->framesStorage == NULL)
+	{
+		kfree((void*)sharedObject);
+		return NULL;
+	}
 
 	for(int i=0;i<strlen(shareName) ;i++)
 	{
@@ -273,15 +277,19 @@ int getSharedObject(int32 ownerID, char* shareName, void* virtual_address)
 //==========================
 // [B1] Delete Share Object:
 //==========================
+
+
+
 //delete the given shared object from the "shares_list"
 //it should free its framesStorage and the share object itself
 void free_share(struct Share* ptrShare)
 {
 	//TODO: [PROJECT'24.MS2 - BONUS#4] [4] SHARED MEMORY [KERNEL SIDE] - free_share()
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("free_share is not implemented yet");
+	//panic("free_share is not implemented yet");
 	//Your Code is Here...
 
+	LIST_REMOVE(&(AllShares.shares_list), ptrShare);
 }
 //========================
 // [B2] Free Share Object:
@@ -290,7 +298,51 @@ int freeSharedObject(int32 sharedObjectID, void *startVA)
 {
 	//TODO: [PROJECT'24.MS2 - BONUS#4] [4] SHARED MEMORY [KERNEL SIDE] - freeSharedObject()
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("freeSharedObject is not implemented yet");
+	//panic("freeSharedObject is not implemented yet");
 	//Your Code is Here...
+
+	struct Env* current_env = get_cpu_proc();
+	//acquire_spinlock(&(AllShares.shareslock));
+	struct Share* sharedObjectInList,*sharedObjectToFree;
+
+	LIST_FOREACH(sharedObjectInList,&(AllShares.shares_list))
+	{
+		if(sharedObjectInList->ownerID == sharedObjectID)
+		{
+			sharedObjectToFree=sharedObjectInList;
+			//release_spinlock(&(AllShares.shareslock));
+		}
+	}
+	uint32 frames_to_unmap=(sharedObjectToFree->size)/PAGE_SIZE;
+	uint32 page_tables_to_free=frames_to_unmap/1024;
+	uint32 remainder_frames=frames_to_unmap%1024;
+	uint32* va_to_free=(uint32*)startVA;
+	uint32 start_cnt=0;
+	for(int i = 0; i < frames_to_unmap;i++)
+	{
+		uint32 *ptr_page_table;
+		get_page_table(current_env->env_page_directory,(uint32)va_to_free,&ptr_page_table);
+		if(&ptr_page_table[PTX(va_to_free)] == ptr_page_table)
+		{
+			if(start_cnt==1024)
+				decrement_references(get_frame_info(current_env->env_page_directory,(uint32)ptr_page_table,&ptr_page_table));
+			start_cnt=0;
+		}
+		unmap_frame(current_env->env_page_directory,(uint32)va_to_free);
+
+		va_to_free+=PAGE_SIZE;
+		start_cnt++;
+	}
+	sharedObjectToFree->references--;
+
+
+	if(sharedObjectToFree->references == 0)
+	{
+		free_share(sharedObjectToFree);
+	}
+	//release_spinlock(&(AllShares.shareslock));
+	//current_env->env_page_directory[PTX(va_to_free)]
+	return 0;
+
 
 }

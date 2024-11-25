@@ -206,12 +206,11 @@ int createSharedObject(int32 ownerID, char* shareName, uint32 size, uint8 isWrit
 	{
 		struct FrameInfo *ptr_frame_info;
 		allocate_frame(&ptr_frame_info);
+		uint32* ptr_page_table = NULL;
 		map_frame(myenv->env_page_directory, ptr_frame_info, (uint32)virtual_address, PERM_WRITEABLE | PERM_USER);
-
 		SharedObj->framesStorage[i] = ptr_frame_info;
 		virtual_address += PAGE_SIZE;
 	}
-
 	myenv->counterForSharedObj++;
 
 	return SharedObj->ID;
@@ -287,9 +286,11 @@ void free_share(struct Share* ptrShare)
 	//TODO: [PROJECT'24.MS2 - BONUS#4] [4] SHARED MEMORY [KERNEL SIDE] - free_share()
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
 	//panic("free_share is not implemented yet");
-	//Your Code is Here...
 
 	LIST_REMOVE(&(AllShares.shares_list), ptrShare);
+
+	kfree(ptrShare->framesStorage);
+	kfree(ptrShare);
 }
 //========================
 // [B2] Free Share Object:
@@ -302,47 +303,48 @@ int freeSharedObject(int32 sharedObjectID, void *startVA)
 	//Your Code is Here...
 
 	struct Env* current_env = get_cpu_proc();
-	//acquire_spinlock(&(AllShares.shareslock));
 	struct Share* sharedObjectInList,*sharedObjectToFree;
 
 	LIST_FOREACH(sharedObjectInList,&(AllShares.shares_list))
 	{
-		if(sharedObjectInList->ownerID == sharedObjectID)
+		if(sharedObjectInList->ID == sharedObjectID)
 		{
 			sharedObjectToFree=sharedObjectInList;
-			//release_spinlock(&(AllShares.shareslock));
 		}
 	}
-	uint32 frames_to_unmap=(sharedObjectToFree->size)/PAGE_SIZE;
-	uint32 page_tables_to_free=frames_to_unmap/1024;
-	uint32 remainder_frames=frames_to_unmap%1024;
-	uint32* va_to_free=(uint32*)startVA;
-	uint32 start_cnt=0;
-	for(int i = 0; i < frames_to_unmap;i++)
+
+	uint32 iterator = (uint32)startVA;
+
+	uint32 noOfFrames = ROUNDUP(sharedObjectToFree->size, PAGE_SIZE)/PAGE_SIZE;
+
+	uint32 *ptr_page_table;
+
+	for (uint32 i = 0; i < noOfFrames; i++)
 	{
-		uint32 *ptr_page_table;
-		get_page_table(current_env->env_page_directory,(uint32)va_to_free,&ptr_page_table);
-		if(&ptr_page_table[PTX(va_to_free)] == ptr_page_table)
-		{
-			if(start_cnt==1024)
-				decrement_references(get_frame_info(current_env->env_page_directory,(uint32)ptr_page_table,&ptr_page_table));
-			start_cnt=0;
+		get_page_table(current_env->env_page_directory, iterator, &ptr_page_table);
+
+		unmap_frame(current_env->env_page_directory, iterator);
+
+		uint32 empty = 1;
+		for (int j = 0; j < 1024; j++) {
+			if (ptr_page_table[j] != 0) {
+				empty = 0;
+				break;
+			}
 		}
-		unmap_frame(current_env->env_page_directory,(uint32)va_to_free);
+		if (empty == 1) {
+			current_env->env_page_directory[PDX(iterator)] = 0;
+			unmap_frame(current_env->env_page_directory, (uint32)ptr_page_table);
+		}
 
-		va_to_free+=PAGE_SIZE;
-		start_cnt++;
+		iterator += PAGE_SIZE;
 	}
-	sharedObjectToFree->references--;
 
+	sharedObjectToFree->references--;
 
 	if(sharedObjectToFree->references == 0)
 	{
 		free_share(sharedObjectToFree);
 	}
-	//release_spinlock(&(AllShares.shareslock));
-	//current_env->env_page_directory[PTX(va_to_free)]
 	return 0;
-
-
 }

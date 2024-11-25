@@ -174,105 +174,105 @@ void free(void* virtual_address)
 
 	uint32 address = (uint32)virtual_address;
 
-	    if (address > myEnv->start && address < myEnv->hard_limit)
-	    {
-	        free_block(virtual_address);
-	        return;
-	    }
-	    else if (address >= myEnv->hard_limit + PAGE_SIZE && address < USER_HEAP_MAX)
-	    {
-	        uint32 iterator = address;
-	        uint32 noOfFrames = 0;
-	        uint32 size = 0;
-	        int index = -1;
+	if (address > myEnv->start && address < myEnv->hard_limit)
+	{
+		free_block(virtual_address);
+		return;
+	}
+	else if (address >= myEnv->hard_limit + PAGE_SIZE && address < USER_HEAP_MAX)
+	{
+		uint32 iterator = address;
+		uint32 noOfFrames = 0;
+		uint32 size = 0;
+		int index = -1;
 
-	        int left = 0;
-	        int right = env_block_count - 1;
-	        while (left <= right)
-	        {
-	            int mid = left + (right - left) / 2;
+		int left = 0;
+		int right = env_block_count - 1;
+		while (left <= right)
+		{
+			int mid = left + (right - left) / 2;
 
-	            if (env_allocated_blocks[mid].va == address)
-	            {
-	                noOfFrames = env_allocated_blocks[mid].size / PAGE_SIZE;
-	                size = env_allocated_blocks[mid].size;
-	                index = mid;
-
-	                memmove(&env_allocated_blocks[mid], &env_allocated_blocks[mid + 1],
-	                        (env_block_count - mid - 1) * sizeof(struct EnvPageBlock));
-	                env_block_count--;
-	                break;
-	            }
-	            else if (env_allocated_blocks[mid].va < address)
-	            {
-	                left = mid + 1;
-	            }
-	            else
-	            {
-	                right = mid - 1;
-	            }
-	        }
-
-	        if (index == -1)
-	        {
-	            panic("Invalid address: Block not found in allocated_blocks");
-	            return;
-	        }
-
-	        struct EnvFreeBlock newFreeBlock;
-	        newFreeBlock.va = address;
-	        newFreeBlock.size = size;
-
-	        left = 0;
-			right = env_free_count - 1;
-			while (left <= right)
+			if (env_allocated_blocks[mid].va == address)
 			{
-				int mid = left + (right - left) / 2;
+				noOfFrames = env_allocated_blocks[mid].size / PAGE_SIZE;
+				size = env_allocated_blocks[mid].size;
+				index = mid;
 
-				if (env_free_blocks[mid].va < newFreeBlock.va)
-				{
-					left = mid + 1;
-				}
-				else
-				{
-					right = mid - 1;
-				}
+				memmove(&env_allocated_blocks[mid], &env_allocated_blocks[mid + 1],
+						(env_block_count - mid - 1) * sizeof(struct EnvPageBlock));
+				env_block_count--;
+				break;
 			}
+			else if (env_allocated_blocks[mid].va < address)
+			{
+				left = mid + 1;
+			}
+			else
+			{
+				right = mid - 1;
+			}
+		}
 
-			int insertIndex = left;
+		if (index == -1)
+		{
+			panic("Invalid address: Block not found in allocated_blocks");
+			return;
+		}
 
-	        if (env_free_count > 0 && insertIndex < env_free_count)
-	        {
-	            memmove(&env_free_blocks[insertIndex + 1], &env_free_blocks[insertIndex],
-	                    (env_free_count - insertIndex) * sizeof(struct EnvFreeBlock));
-	        }
-	        env_free_blocks[insertIndex] = newFreeBlock;
-	        env_free_count++;
+		struct EnvFreeBlock newFreeBlock;
+		newFreeBlock.va = address;
+		newFreeBlock.size = size;
 
-	        if (insertIndex > 0)
-	        {
-	            struct EnvFreeBlock* prevBlock = &env_free_blocks[insertIndex - 1];
-	            if (prevBlock->va + prevBlock->size == newFreeBlock.va)
-	            {
-	                prevBlock->size += newFreeBlock.size;
-	                memmove(&env_free_blocks[insertIndex], &env_free_blocks[insertIndex + 1],
-	                        (env_free_count - insertIndex - 1) * sizeof(struct EnvFreeBlock));
-	                env_free_count--;
-	                insertIndex--;
-	            }
-	        }
+		left = 0;
+		right = env_free_count - 1;
+		while (left <= right)
+		{
+			int mid = left + (right - left) / 2;
 
-	        if (insertIndex < env_free_count - 1)
-	        {
-	            struct EnvFreeBlock* nextBlock = &env_free_blocks[insertIndex + 1];
-	            if (newFreeBlock.va + newFreeBlock.size == nextBlock->va)
-	            {
-	            	env_free_blocks[insertIndex].size += nextBlock->size;
-	                memmove(&env_free_blocks[insertIndex + 1], &env_free_blocks[insertIndex + 2],
-	                        (env_free_count - insertIndex - 2) * sizeof(struct EnvFreeBlock));
-	                env_free_count--;
-	            }
-	        }
+			if (env_free_blocks[mid].va < newFreeBlock.va)
+			{
+				left = mid + 1;
+			}
+			else
+			{
+				right = mid - 1;
+			}
+		}
+
+		int insertIndex = left;
+
+		if (env_free_count > 0 && insertIndex < env_free_count)
+		{
+			memmove(&env_free_blocks[insertIndex + 1], &env_free_blocks[insertIndex],
+					(env_free_count - insertIndex) * sizeof(struct EnvFreeBlock));
+		}
+		env_free_blocks[insertIndex] = newFreeBlock;
+		env_free_count++;
+
+		if (insertIndex > 0)
+		{
+			struct EnvFreeBlock* prevBlock = &env_free_blocks[insertIndex - 1];
+			if (prevBlock->va + prevBlock->size == newFreeBlock.va)
+			{
+				prevBlock->size += newFreeBlock.size;
+				memmove(&env_free_blocks[insertIndex], &env_free_blocks[insertIndex + 1],
+						(env_free_count - insertIndex - 1) * sizeof(struct EnvFreeBlock));
+				env_free_count--;
+				insertIndex--;
+			}
+		}
+
+		if (insertIndex < env_free_count - 1)
+		{
+			struct EnvFreeBlock* nextBlock = &env_free_blocks[insertIndex + 1];
+			if (newFreeBlock.va + newFreeBlock.size == nextBlock->va)
+			{
+				env_free_blocks[insertIndex].size += nextBlock->size;
+				memmove(&env_free_blocks[insertIndex + 1], &env_free_blocks[insertIndex + 2],
+						(env_free_count - insertIndex - 2) * sizeof(struct EnvFreeBlock));
+				env_free_count--;
+			}
+		}
 
 	        sys_free_user_mem(address, size);
 
@@ -330,6 +330,7 @@ void* smalloc(char *sharedVarName, uint32 size, uint8 isWritable)
 				{
 					return NULL;
 				}
+				sharedObjectsIDs[allocationAddress/PAGE_SIZE]=Tst;
 				return (void*) allocationAddress;
 			}
 			else
@@ -390,7 +391,6 @@ void* smalloc(char *sharedVarName, uint32 size, uint8 isWritable)
 		env_allocated_blocks[index].va = allocationAddress;
 		env_allocated_blocks[index].size = size;
 		env_block_count++;
-
 		int Tst = sys_createSharedObject(sharedVarName, size,  isWritable,(void*) allocationAddress);
 		if(Tst==E_SHARED_MEM_EXISTS || Tst==E_NO_SHARE)
 		{
@@ -452,6 +452,7 @@ void* sget(int32 ownerEnvID, char *sharedVarName)
 				{
 					return NULL;
 				}
+				sharedObjectsIDs[allocationAddress/PAGE_SIZE]=Tst;
 				return (void*) allocationAddress;
 			}
 			else
@@ -519,6 +520,7 @@ void* sget(int32 ownerEnvID, char *sharedVarName)
 		{
 			return NULL;
 		}
+		sharedObjectsIDs[allocationAddress/PAGE_SIZE]=Tst;
 		return (void*)allocationAddress;
 	}
 
@@ -546,8 +548,103 @@ void sfree(void* virtual_address)
 	//TODO: [PROJECT'24.MS2 - BONUS#4] [4] SHARED MEMORY [USER SIDE] - sfree()
 	// Write your code here, remove the panic and write your code
 	//panic("sfree() is not implemented yet...!!");
+
+	uint32 address = (uint32)virtual_address;
+
+	uint32 iterator = address;
+	uint32 size = 0;
+	int index = -1;
+
+	int left = 0;
+	int right = env_block_count - 1;
+	while (left <= right)
+	{
+		int mid = left + (right - left) / 2;
+
+		if (env_allocated_blocks[mid].va == address)
+		{
+			size = env_allocated_blocks[mid].size;
+			index = mid;
+
+			memmove(&env_allocated_blocks[mid], &env_allocated_blocks[mid + 1],
+					(env_block_count - mid - 1) * sizeof(struct EnvPageBlock));
+			env_block_count--;
+			break;
+		}
+		else if (env_allocated_blocks[mid].va < address)
+		{
+			left = mid + 1;
+		}
+		else
+		{
+			right = mid - 1;
+		}
+	}
+
+	if (index == -1)
+	{
+		panic("Invalid address: Block not found in allocated_blocks");
+		return;
+	}
+
+	struct EnvFreeBlock newFreeBlock;
+	newFreeBlock.va = address;
+	newFreeBlock.size = size;
+
+	left = 0;
+	right = env_free_count - 1;
+	while (left <= right)
+	{
+		int mid = left + (right - left) / 2;
+
+		if (env_free_blocks[mid].va < newFreeBlock.va)
+		{
+			left = mid + 1;
+		}
+		else
+		{
+			right = mid - 1;
+		}
+	}
+
+	int insertIndex = left;
+
+	if (env_free_count > 0 && insertIndex < env_free_count)
+	{
+		memmove(&env_free_blocks[insertIndex + 1], &env_free_blocks[insertIndex],
+				(env_free_count - insertIndex) * sizeof(struct EnvFreeBlock));
+	}
+	env_free_blocks[insertIndex] = newFreeBlock;
+	env_free_count++;
+
+	if (insertIndex > 0)
+	{
+		struct EnvFreeBlock* prevBlock = &env_free_blocks[insertIndex - 1];
+		if (prevBlock->va + prevBlock->size == newFreeBlock.va)
+		{
+			prevBlock->size += newFreeBlock.size;
+			memmove(&env_free_blocks[insertIndex], &env_free_blocks[insertIndex + 1],
+					(env_free_count - insertIndex - 1) * sizeof(struct EnvFreeBlock));
+			env_free_count--;
+			insertIndex--;
+		}
+	}
+
+	if (insertIndex < env_free_count - 1)
+	{
+		struct EnvFreeBlock* nextBlock = &env_free_blocks[insertIndex + 1];
+		if (newFreeBlock.va + newFreeBlock.size == nextBlock->va)
+		{
+			env_free_blocks[insertIndex].size += nextBlock->size;
+			memmove(&env_free_blocks[insertIndex + 1], &env_free_blocks[insertIndex + 2],
+					(env_free_count - insertIndex - 2) * sizeof(struct EnvFreeBlock));
+			env_free_count--;
+		}
+	}
+
 	uint32 sharedVarID=sharedObjectsIDs[((uint32)virtual_address)/PAGE_SIZE];
 	sys_freeSharedObject(sharedVarID,virtual_address);
+	sharedObjectsIDs[((uint32)virtual_address)/PAGE_SIZE] = 0;
 
 }
 

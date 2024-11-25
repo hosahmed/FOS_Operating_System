@@ -406,9 +406,16 @@ void *realloc_block_FF(void* va, uint32 new_size)
 				if(forward_block_size < difference_needed)//case 1(free block size is insufficient)
 				{// relocate and copy data
 					void *new_block = alloc_block_FF(new_size);
-				    memcpy(new_block, va, get_block_size(va) - 8);
-				    free_block(va);
-				    return new_block;
+					if(new_block)
+					{
+						memcpy(new_block, va, get_block_size(va) - 8);
+						free_block(va);
+						return new_block;
+					}
+					else
+					{
+						return va;
+					}
 				}
 				else if(forward_block_size-difference_needed<16)//case 2(free block size is sufficient but the remaining size can not be used)
 				{
@@ -445,9 +452,16 @@ void *realloc_block_FF(void* va, uint32 new_size)
 			else //case 4(the block after is not free)
 			{ // relocate and copy data
 				void *new_block = alloc_block_FF(new_size);
-			    memcpy(new_block, va, get_block_size(va) - 8);
-			    free_block(va);
-			    return new_block;
+				if(new_block)
+				{
+					memcpy(new_block, va, get_block_size(va) - 8);
+					free_block(va);
+					return new_block;
+				}
+				else
+				{
+					return va;
+				}
 			}
 			forward_block_ptr=NULL;
 		}

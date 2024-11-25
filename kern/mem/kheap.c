@@ -451,6 +451,10 @@ void *krealloc(void *virtual_address, uint32 new_size)
 				kfree(virtual_address);
 				return newVA;
 			}
+			else
+			{
+				return NULL;
+			}
 		}
 		// page -> page (case 7)
 		else
@@ -505,6 +509,10 @@ void *krealloc(void *virtual_address, uint32 new_size)
 						kfree(virtual_address);
 						return newVA;
 					}
+					else
+					{
+						return NULL;
+					}
 				}
 				else if(new_size < allocated_blocks[allocatedBlockIndex].size)
 				{
@@ -551,7 +559,7 @@ void *krealloc(void *virtual_address, uint32 new_size)
 						iterator += PAGE_SIZE;
 					}
 				}
-				return NULL;
+				return (void*)allocated_blocks[allocatedBlockIndex].va;
 			}
 
 
@@ -561,7 +569,7 @@ void *krealloc(void *virtual_address, uint32 new_size)
 				// next block is allocated and size is equal do nothing(case 7.1.1)
 				if(allocated_blocks[allocatedBlockIndex].size == new_size)
 				{
-					return NULL;
+					return (void*)allocated_blocks[allocatedBlockIndex].va;
 				}
 				// next block is allocated and size is increased (case 7.1.2)
 				if(allocated_blocks[allocatedBlockIndex].size < new_size)
@@ -573,6 +581,10 @@ void *krealloc(void *virtual_address, uint32 new_size)
 						memcpy(newVA, virtual_address, copySize);
 						kfree(virtual_address);
 						return newVA;
+					}
+					else
+					{
+						return NULL;
 					}
 				}
 				// next block is allocated and size is decreased (case 7.1.3)
@@ -621,7 +633,7 @@ void *krealloc(void *virtual_address, uint32 new_size)
 						unmap_frame(ptr_page_directory, iterator);
 						iterator += PAGE_SIZE;
 					}
-					return virtual_address;
+					return (void*)allocated_blocks[allocatedBlockIndex].va;
 				}
 			}
 			// next block is free (case 7.2)
@@ -651,7 +663,7 @@ void *krealloc(void *virtual_address, uint32 new_size)
 				// next block is free and size is equal do nothing (case 7.2.1)
 				if(allocated_blocks[allocatedBlockIndex].size == new_size)
 				{
-					return NULL;
+					return (void*)allocated_blocks[allocatedBlockIndex].va;
 				}
 				// next block is free and size is increased (case 7.2.2)
 				if(allocated_blocks[allocatedBlockIndex].size < new_size)
@@ -682,6 +694,7 @@ void *krealloc(void *virtual_address, uint32 new_size)
 							frames_virtual_addresses[(kheap_physical_address(iterator)/4096)]=iterator;
 							iterator += PAGE_SIZE;
 						}
+						return (void*)allocated_blocks[allocatedBlockIndex].va;
 					}
 					// cannot fit in
 					else
@@ -693,6 +706,10 @@ void *krealloc(void *virtual_address, uint32 new_size)
 							memcpy(newVA, virtual_address, copySize);
 							kfree(virtual_address);
 							return newVA;
+						}
+						else
+						{
+							return NULL;
 						}
 					}
 				}
@@ -715,7 +732,7 @@ void *krealloc(void *virtual_address, uint32 new_size)
 						unmap_frame(ptr_page_directory, iterator);
 						iterator += PAGE_SIZE;
 					}
-
+					return (void*)allocated_blocks[allocatedBlockIndex].va;
 				}
 			}
 		}
@@ -723,3 +740,39 @@ void *krealloc(void *virtual_address, uint32 new_size)
 
 	return virtual_address;
 }
+
+//////////////////////////////////////
+/////////FOR TESTING KREALLOC/////////
+//////////////////////////////////////
+void print_allocated_free_blocks()
+{
+	if(block_count == 0)
+	{
+		cprintf("NO ALLOCATED BLOCKS!!!\n\n");
+	}
+	else
+	{
+		cprintf("ALLOCATED BLOCKS :- \n");
+	}
+	for(int i = 0 ; i < block_count ; i++)
+	{
+		cprintf("\nblock #%d  beginVA = %x and size = %d\n", i+1, allocated_blocks[i].va, allocated_blocks[i].size);
+	}
+
+	if(free_count == 0)
+	{
+		cprintf("NO FREE BLOCKS!!!\n\n");
+	}
+	else
+	{
+		cprintf("\nFREE BLOCKS :- \n");
+	}
+	for(int i = 0 ; i < free_count ; i++)
+	{
+		cprintf("\nblock #%d  beginVA = %x and size = %d\n", i+1, free_blocks[i].va, free_blocks[i].size);
+	}
+	cprintf("\n");
+}
+//////////////////////////////////////
+//////////////////////////////////////
+//////////////////////////////////////

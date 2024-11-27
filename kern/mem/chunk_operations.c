@@ -210,18 +210,30 @@ void free_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 		get_page_table(e->env_page_directory, va, &ptr_page_table);
 		ptr_page_table[PTX(va)] = 0;
 
-		struct WorkingSetElement *wsElement = (struct WorkingSetElement *) WorkingSetVA[(va - USER_HEAP_START - (32<<20) - PAGE_SIZE)/PAGE_SIZE];
-
-		if(wsElement != NULL)
+//		struct WorkingSetElement *wsElement = (struct WorkingSetElement *) WorkingSetVA[(va - USER_HEAP_START - (32<<20) - PAGE_SIZE)/PAGE_SIZE];
+//
+//		if(wsElement != NULL)
+//		{
+//			LIST_REMOVE(&(e->page_WS_list), wsElement);
+//			kfree(wsElement);
+//
+//			pf_remove_env_page(e, ROUNDDOWN(va, PAGE_SIZE));
+//
+//			WorkingSetVA[(va - USER_HEAP_START - (32<<20) - PAGE_SIZE)/PAGE_SIZE] = 0;
+//		}
+		struct WorkingSetElement *wsElement;
+		LIST_FOREACH(wsElement, &(e->page_WS_list))
 		{
-			LIST_REMOVE(&(e->page_WS_list), wsElement);
-			kfree(wsElement);
-
-			pf_remove_env_page(e, ROUNDDOWN(va, PAGE_SIZE));
-
-			WorkingSetVA[(va - USER_HEAP_START - (32<<20) - PAGE_SIZE)/PAGE_SIZE] = 0;
+			if(ROUNDDOWN(wsElement->virtual_address, PAGE_SIZE) == ROUNDDOWN(va, PAGE_SIZE))
+			{
+				LIST_REMOVE(&(e->page_WS_list), wsElement);
+				kfree(wsElement);
+				pf_remove_env_page(e, ROUNDDOWN(va, PAGE_SIZE));
+				break;
+			}
 		}
 	}
+
 
 
 	//TODO: [PROJECT'24.MS2 - BONUS#3] [3] USER HEAP [KERNEL SIDE] - O(1) free_user_mem

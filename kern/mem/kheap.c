@@ -4,6 +4,44 @@
 #include <inc/dynamic_allocator.h>
 #include "memory_manager.h"
 
+//////////////////////////////////////////////////////
+// physical to virtual Data Structure
+
+#define NUMBER_OF_FRAMES 1048576
+uint32 frames_virtual_addresses[NUMBER_OF_FRAMES];
+
+//////////////////////////////////////////////////////
+
+
+//////////////////////////////////////////////////////
+// Fast Page Allocator Data Structures
+
+#define MAX_BLOCKS 40959
+
+struct PageBlock {
+    uint32 va;
+    uint32 size;
+};
+
+struct FreeBlock {
+	uint32 va;
+    uint32 size;
+};
+
+struct PageBlock allocated_blocks[MAX_BLOCKS];
+struct FreeBlock free_blocks[MAX_BLOCKS];
+uint32 block_count;
+uint32 free_count;
+
+//////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////
+// free_user_mem O(1)
+
+//uint32 WorkingSetVA[(0xA0000000 - 0x80000000 - (32<<20) - 4096)/4096];
+//uint32 WorkingSetVA[NUMBER_OF_FRAMES];
+/////////////////////////////////////////////////////
+
 //Initialize the dynamic allocator of kernel heap with the given start address, size & limit
 //All pages in the given range should be allocated
 //Remember: call the initialize_dynamic_allocator(..) to complete the initialization

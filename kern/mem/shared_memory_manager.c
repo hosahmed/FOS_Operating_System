@@ -306,6 +306,7 @@ int freeSharedObject(int32 sharedObjectID, void *startVA)
 	struct Env* current_env = get_cpu_proc();
 	struct Share* sharedObjectInList,*sharedObjectToFree;
 
+	acquire_spinlock(&(AllShares.shareslock));
 	LIST_FOREACH(sharedObjectInList,&(AllShares.shares_list))
 	{
 		if(sharedObjectInList->ID == sharedObjectID)
@@ -313,6 +314,7 @@ int freeSharedObject(int32 sharedObjectID, void *startVA)
 			sharedObjectToFree=sharedObjectInList;
 		}
 	}
+	release_spinlock(&(AllShares.shareslock));
 
 	uint32 iterator = (uint32)startVA;
 

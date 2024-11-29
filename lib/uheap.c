@@ -21,12 +21,55 @@ struct EnvFreeBlock {
 // Fast Page Allocator Data Structures
 
 struct EnvPageBlock env_allocated_blocks[ENV_MAX_BLOCKS];
-struct EnvFreeBlock env_free_blocks[ENV_MAX_BLOCKS];
+struct EnvFreeBlock env_free_blocks[ENV_MAX_BLOCKS/2];
 uint32 sharedObjectsIDs[NUM_OF_UHEAP_PAGES];
 uint32 env_block_count;
 uint32 env_free_count;
 
 //////////////////////////////////////////////////////
+
+//////////////////////////////////////
+/////////FOR PRINTING UHEAP BLOCKS/////////
+//////////////////////////////////////
+void print_allocated_free_blocks()
+{
+	if(env_block_count == 0)
+		{
+			cprintf("NO ALLOCATED BLOCKS!!!\n\n");
+		}
+		else
+		{
+			cprintf("ALLOCATED BLOCKS :- \n");
+		}
+		for(int i = 0 ; i < env_block_count ; i++)
+		{
+			cprintf("\nblock #%d  beginVA = %x and size = %d\n", i+1, env_allocated_blocks[i].va, env_allocated_blocks[i].size);
+		}
+
+		if(env_free_count == 0)
+		{
+			cprintf("NO FREE BLOCKS!!!\n\n");
+		}
+		else
+		{
+			cprintf("\nFREE BLOCKS :- \n");
+		}
+		for(int i = 0 ; i < env_free_count ; i++)
+		{
+			cprintf("\nblock #%d  beginVA = %x and size = %d\n", i+1, env_free_blocks[i].va, env_free_blocks[i].size);
+		}
+		cprintf("\n");
+}
+//////////////////////////////////////
+//////////////////////////////////////
+//////////////////////////////////////
+
+//////////////////////////////////////////////////////
+// free_user_mem O(1)
+
+//uint32 WorkingSetVA[(0xA0000000 - 0x80000000 - (32<<20) - 4096)/4096];
+uint32 WorkingSetVA[1048576];
+/////////////////////////////////////////////////////
 
 //==================================================================================//
 //============================ REQUIRED FUNCTIONS ==================================//
@@ -52,6 +95,8 @@ void* malloc(uint32 size)
 	//==============================================================
 	//TODO: [PROJECT'24.MS2 - #12] [3] USER HEAP [USER SIDE] - malloc()
 	// Write your code here, remove the panic and write your code
+
+	//print_allocated_free_blocks();
 
 	if (sys_isUHeapPlacementStrategyFIRSTFIT())
 	{
@@ -412,11 +457,16 @@ void* sget(int32 ownerEnvID, char *sharedVarName)
 	//TODO: [PROJECT'24.MS2 - #20] [4] SHARED MEMORY [USER SIDE] - sget()
 	// Write your code here, remove the panic and write your code
 	//panic("sget() is not implemented yet...!!");
+
+	cprintf("\nI AM IN SGET!!!!!!!!!\n");
+
 	int size = sys_getSizeOfSharedObject(ownerEnvID,sharedVarName);
 	if(size==E_SHARED_MEM_NOT_EXISTS)
 	{
+		cprintf("\nOBJECT NOT FOUND!!!!!!!!!\n");
 		return NULL;
 	}
+	cprintf("\nOBJECT LOCATED!!!!!!!!\n");
 
 	if(sys_isUHeapPlacementStrategyFIRSTFIT())
 	{
@@ -427,38 +477,32 @@ void* sget(int32 ownerEnvID, char *sharedVarName)
 
 		if (env_block_count == 0)
 		{
-			if (size <= USER_HEAP_MAX - myEnv->hard_limit - PAGE_SIZE)
+			allocationAddress = myEnv->hard_limit + PAGE_SIZE;
+			env_allocated_blocks[0].va = allocationAddress;
+			env_allocated_blocks[0].size = size;
+			env_block_count = 1;
+
+			if (size < USER_HEAP_MAX - myEnv->hard_limit - PAGE_SIZE)
 			{
-				allocationAddress = myEnv->hard_limit + PAGE_SIZE;
-				env_allocated_blocks[0].va = allocationAddress;
-				env_allocated_blocks[0].size = size;
-				env_block_count = 1;
-
-				if (size < USER_HEAP_MAX - myEnv->hard_limit - PAGE_SIZE)
-				{
-					env_free_blocks[0].va = allocationAddress + size;
-					env_free_blocks[0].size = (USER_HEAP_MAX - myEnv->hard_limit - PAGE_SIZE) - size;
-					env_free_count = 1;
-				}
-				else
-				{
-					env_free_count = 0;
-				}
-
-				int Tst = sys_getSharedObject(ownerEnvID, sharedVarName,(void*)allocationAddress);
-
-				//check the return of Tst
-				if(Tst==E_SHARED_MEM_NOT_EXISTS )
-				{
-					return NULL;
-				}
-				sharedObjectsIDs[allocationAddress/PAGE_SIZE]=Tst;
-				return (void*) allocationAddress;
+				env_free_blocks[0].va = allocationAddress + size;
+				env_free_blocks[0].size = (USER_HEAP_MAX - myEnv->hard_limit - PAGE_SIZE) - size;
+				env_free_count = 1;
 			}
 			else
 			{
+				env_free_count = 0;
+			}
+
+			int Tst = sys_getSharedObject(ownerEnvID, sharedVarName,(void*)allocationAddress);
+
+			//check the return of Tst
+			if(Tst==E_SHARED_MEM_NOT_EXISTS )
+			{
+				cprintf("\nOBJECT NOT FOUND!!!!!!!!!\n");
 				return NULL;
 			}
+			sharedObjectsIDs[allocationAddress/PAGE_SIZE]=Tst;
+			return (void*) allocationAddress;
 		}
 
 		for (uint32 i = 0; i < env_free_count; i++)
@@ -487,6 +531,7 @@ void* sget(int32 ownerEnvID, char *sharedVarName)
 
 		if (!canAllocate)
 		{
+			cprintf("\nCAN'T FIND SPACE!!\n");
 			return NULL;
 		}
 
@@ -518,6 +563,7 @@ void* sget(int32 ownerEnvID, char *sharedVarName)
 
 		if(Tst==E_SHARED_MEM_NOT_EXISTS)
 		{
+			cprintf("\nOBJECT NOT FOUND!!!!!!!!!\n");
 			return NULL;
 		}
 		sharedObjectsIDs[allocationAddress/PAGE_SIZE]=Tst;

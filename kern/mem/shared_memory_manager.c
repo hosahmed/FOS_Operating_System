@@ -319,6 +319,9 @@ int freeSharedObject(int32 sharedObjectID, void *startVA)
 	uint32 noOfFrames = ROUNDUP(sharedObjectToFree->size, PAGE_SIZE)/PAGE_SIZE;
 
 	uint32 *ptr_page_table;
+	uint32 *ptr_page_table2;
+
+	get_page_table(current_env->env_page_directory, iterator, &ptr_page_table2);
 
 	for (uint32 i = 0; i < noOfFrames; i++)
 	{
@@ -326,6 +329,28 @@ int freeSharedObject(int32 sharedObjectID, void *startVA)
 
 		unmap_frame(current_env->env_page_directory, iterator);
 
+
+		if(ptr_page_table2 != ptr_page_table)
+		{
+			uint32 empty = 1;
+			for (int j = 0; j < 1024; j++) {
+				if (ptr_page_table2[j] != 0) {
+					empty = 0;
+					break;
+				}
+			}
+			if (empty == 1) {
+				current_env->env_page_directory[PDX(iterator - PAGE_SIZE)] = 0;
+				unmap_frame(current_env->env_page_directory, (uint32)ptr_page_table2);
+			}
+			ptr_page_table2 = ptr_page_table;
+		}
+
+		iterator += PAGE_SIZE;
+	}
+
+	if(ptr_page_table != NULL)
+	{
 		uint32 empty = 1;
 		for (int j = 0; j < 1024; j++) {
 			if (ptr_page_table[j] != 0) {
@@ -337,11 +362,11 @@ int freeSharedObject(int32 sharedObjectID, void *startVA)
 			current_env->env_page_directory[PDX(iterator)] = 0;
 			unmap_frame(current_env->env_page_directory, (uint32)ptr_page_table);
 		}
-
-		iterator += PAGE_SIZE;
 	}
 
 	sharedObjectToFree->references--;
+
+	current_env->counterForSharedObj--;
 
 	if(sharedObjectToFree->references == 0)
 	{

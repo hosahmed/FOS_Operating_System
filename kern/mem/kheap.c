@@ -29,7 +29,7 @@ struct FreeBlock {
 };
 
 struct PageBlock allocated_blocks[MAX_BLOCKS];
-struct FreeBlock free_blocks[MAX_BLOCKS];
+struct FreeBlock free_blocks[MAX_BLOCKS/2];
 uint32 block_count;
 uint32 free_count;
 

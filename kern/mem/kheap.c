@@ -5,18 +5,7 @@
 #include "memory_manager.h"
 
 //////////////////////////////////////////////////////
-// physical to virtual Data Structure
-
-#define NUMBER_OF_FRAMES 1048576
-uint32 frames_virtual_addresses[NUMBER_OF_FRAMES];
-
-//////////////////////////////////////////////////////
-
-
-//////////////////////////////////////////////////////
 // Fast Page Allocator Data Structures
-
-#define MAX_BLOCKS 40959
 
 struct PageBlock {
     uint32 va;
@@ -28,8 +17,8 @@ struct FreeBlock {
     uint32 size;
 };
 
-struct PageBlock allocated_blocks[MAX_BLOCKS];
-struct FreeBlock free_blocks[MAX_BLOCKS/2];
+struct PageBlock allocated_blocks[NUM_OF_KHEAP_PAGES];
+struct FreeBlock free_blocks[NUM_OF_KHEAP_PAGES/2];
 uint32 block_count;
 uint32 free_count;
 
@@ -61,7 +50,7 @@ int initialize_kheap_dynamic_allocator(uint32 daStart, uint32 initSizeToAllocate
 		struct FrameInfo *ptr_frame_info;
 		allocate_frame(&ptr_frame_info);
 		map_frame(ptr_page_directory, ptr_frame_info, iterator, PERM_USER | PERM_WRITEABLE);
-		frames_virtual_addresses[(kheap_physical_address(iterator)/4096)]=iterator;
+		ptr_frame_info->va = iterator;
 		iterator += 4096;
 	}
 
@@ -101,7 +90,7 @@ void* sbrk(int numOfPages)
 		struct FrameInfo *ptr_frame_info;
 		allocate_frame(&ptr_frame_info);
 		map_frame(ptr_page_directory, ptr_frame_info, iterator, PERM_USER | PERM_WRITEABLE);
-		frames_virtual_addresses[(kheap_physical_address(iterator)/4096)]=iterator;
+		ptr_frame_info->va = iterator;
 		iterator += 4096;
 	}
 
@@ -155,7 +144,7 @@ void* kmalloc(unsigned int size)
                         struct FrameInfo *ptr_frame_info;
                         allocate_frame(&ptr_frame_info);
                         map_frame(ptr_page_directory, ptr_frame_info, allocationAddress, PERM_WRITEABLE);
-                        frames_virtual_addresses[(kheap_physical_address(allocationAddress)/4096)]=allocationAddress;
+                        ptr_frame_info->va = allocationAddress;
                         allocationAddress += PAGE_SIZE;
                     }
 
@@ -221,7 +210,7 @@ void* kmalloc(unsigned int size)
                 struct FrameInfo *ptr_frame_info;
                 allocate_frame(&ptr_frame_info);
                 map_frame(ptr_page_directory, ptr_frame_info, allocationAddress, PERM_WRITEABLE);
-                frames_virtual_addresses[(kheap_physical_address(allocationAddress)/4096)]=allocationAddress;
+                ptr_frame_info->va = allocationAddress;
                 allocationAddress += PAGE_SIZE;
             }
 
@@ -242,7 +231,6 @@ void kfree(void* virtual_address)
     if (address > start && address < hardLimit)
     {
         free_block(virtual_address);
-        frames_virtual_addresses[(kheap_physical_address(address)/4096)]=0;
         return;
     }
     else if (address >= hardLimit + PAGE_SIZE && address < KERNEL_HEAP_MAX)
@@ -341,7 +329,6 @@ void kfree(void* virtual_address)
 
         for (uint32 i = 0; i < noOfFrames; i++)
         {
-        	frames_virtual_addresses[(kheap_physical_address(iterator)/4096)]=0;
             unmap_frame(ptr_page_directory, iterator);
             iterator += PAGE_SIZE;
         }
@@ -389,10 +376,11 @@ unsigned int kheap_virtual_address(unsigned int physical_address)
 
 	unsigned int obtained_offset=PGOFF(physical_address);
 
-	if(frames_virtual_addresses[(physical_address/4096)] == 0)
+	struct FrameInfo* frame = to_frame_info(physical_address);
+	if(frame->va == 0)
 		return 0;
 	else
-		return frames_virtual_addresses[(physical_address/4096)]+obtained_offset;
+		return frame->va + obtained_offset;
 
 	//return the virtual address corresponding to given physical_address
 	//refer to the project presentation and documentation for details
@@ -585,7 +573,6 @@ void *krealloc(void *virtual_address, uint32 new_size)
 
 					for (uint32 i = 0; i < noOfFramesToDellaocate; i++)
 					{
-						frames_virtual_addresses[(kheap_physical_address(iterator)/4096)]=0;
 						unmap_frame(ptr_page_directory, iterator);
 						iterator += PAGE_SIZE;
 					}
@@ -660,7 +647,6 @@ void *krealloc(void *virtual_address, uint32 new_size)
 
 					for (uint32 i = 0; i < noOfFramesToDellaocate; i++)
 					{
-						frames_virtual_addresses[(kheap_physical_address(iterator)/4096)]=0;
 						unmap_frame(ptr_page_directory, iterator);
 						iterator += PAGE_SIZE;
 					}
@@ -722,7 +708,6 @@ void *krealloc(void *virtual_address, uint32 new_size)
 							struct FrameInfo *ptr_frame_info;
 							allocate_frame(&ptr_frame_info);
 							map_frame(ptr_page_directory, ptr_frame_info, iterator, PERM_WRITEABLE);
-							frames_virtual_addresses[(kheap_physical_address(iterator)/4096)]=iterator;
 							iterator += PAGE_SIZE;
 						}
 						return (void*)allocated_blocks[allocatedBlockIndex].va;
@@ -759,7 +744,6 @@ void *krealloc(void *virtual_address, uint32 new_size)
 
 					for (uint32 i = 0; i < noOfFramesToDellaocate; i++)
 					{
-						frames_virtual_addresses[(kheap_physical_address(iterator)/4096)]=0;
 						unmap_frame(ptr_page_directory, iterator);
 						iterator += PAGE_SIZE;
 					}

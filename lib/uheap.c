@@ -3,8 +3,6 @@
 //////////////////////////////////////////////////////
 // Fast Page Allocator Structs
 
-#define ENV_MAX_BLOCKS NUM_OF_UHEAP_PAGES
-
 struct EnvPageBlock {
 	uint32 va;
 	uint32 size;
@@ -20,9 +18,9 @@ struct EnvFreeBlock {
 //////////////////////////////////////////////////////
 // Fast Page Allocator Data Structures
 
-struct EnvPageBlock env_allocated_blocks[ENV_MAX_BLOCKS];
-struct EnvFreeBlock env_free_blocks[ENV_MAX_BLOCKS];
-uint32 sharedObjectsIDs[ENV_MAX_BLOCKS];
+struct EnvPageBlock env_allocated_blocks[NUM_OF_UHEAP_PAGES];
+struct EnvFreeBlock env_free_blocks[NUM_OF_UHEAP_PAGES];
+uint32 sharedObjectsIDs[NUM_OF_UHEAP_PAGES];
 uint32 env_block_count;
 uint32 env_free_count;
 

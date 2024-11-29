@@ -396,12 +396,12 @@ void *realloc_block_FF(void* va, uint32 new_size)
 
 		if(new_size + 8 > get_block_size(va))//increase size
 		{
-			void *forward_block_ptr=va;
-			forward_block_ptr+=get_block_size(va);
-			uint32 difference_needed=new_size-get_block_size(va)+8;
-			uint32 forward_block_size=get_block_size(forward_block_ptr);
+			void *forward_block_ptr = va;
+			forward_block_ptr += get_block_size(va);
+			int difference_needed=new_size + 8 - get_block_size(va);
+			int forward_block_size=get_block_size(forward_block_ptr);
 
-			if(is_free_block(forward_block_ptr)) // the block after is free
+			if(is_free_block(forward_block_ptr) && *((uint32*)forward_block_ptr) != 1) // the block after is free
 			{
 				if(forward_block_size < difference_needed)//case 1(free block size is insufficient)
 				{// relocate and copy data
@@ -417,36 +417,31 @@ void *realloc_block_FF(void* va, uint32 new_size)
 						return va;
 					}
 				}
-				else if(forward_block_size-difference_needed<16)//case 2(free block size is sufficient but the remaining size can not be used)
+				else if(forward_block_size - difference_needed < 16)//case 2(free block size is sufficient but the remaining size can not be used)
 				{
-					struct BlockElement* element=forward_block_ptr;
-					LIST_REMOVE(&(freeBlocksList),element);
-					uint32 *reset_head=(uint32*)forward_block_ptr;
-				    *(--reset_head)=0;
-				    void *reset_foot = forward_block_ptr-8+forward_block_size;
-				    *(uint32*)reset_foot=0;
+				    LIST_REMOVE(&(freeBlocksList),(struct BlockElement*) forward_block_ptr);
 				    set_block_data(va,get_block_size(va)+forward_block_size,1);
-				    element=NULL;
-				    reset_head=reset_foot=NULL;
+				    return va;
 				}
 				else//case 3(free block size is sufficient and the remaining size can be used)
 				{
-					struct BlockElement* element=forward_block_ptr;
+					struct BlockElement* element = (struct BlockElement*)forward_block_ptr;
 					if(LIST_PREV(element) == NULL)
-						LIST_INSERT_HEAD(&(freeBlocksList),element+difference_needed);
+					{
+						LIST_INSERT_HEAD(&(freeBlocksList), (struct BlockElement*) (forward_block_ptr + difference_needed));
+					}
 					else
-						LIST_INSERT_AFTER(&(freeBlocksList),LIST_PREV(element),element+difference_needed);
+					{
+						LIST_INSERT_AFTER(&(freeBlocksList),element, (struct BlockElement*) (forward_block_ptr + difference_needed));
+					}
 					LIST_REMOVE(&(freeBlocksList),element);
-					uint32 *reset_head=(uint32*)forward_block_ptr;
-					*(--reset_head)=0;
-					void *reset_foot = forward_block_ptr-8+forward_block_size;
-					*(uint32*)reset_foot=0;
-					forward_block_ptr+=difference_needed;
-					set_block_data(forward_block_ptr,forward_block_size-difference_needed,0);
+
+					set_block_data(forward_block_ptr + difference_needed,forward_block_size-difference_needed,0);
 					set_block_data(va,new_size+8,1);
-					element=NULL;
-					reset_head=reset_foot=NULL;
+
+					return va;
 				}
+				return va;
 
 			}
 			else //case 4(the block after is not free)
@@ -463,7 +458,6 @@ void *realloc_block_FF(void* va, uint32 new_size)
 					return va;
 				}
 			}
-			forward_block_ptr=NULL;
 		}
 		else//decrease size
 		{
@@ -474,15 +468,6 @@ void *realloc_block_FF(void* va, uint32 new_size)
 
 			if(is_free_block(forward_block_ptr))//there exist a free block in front of us so we will increase its size
 			{
-				uint32 *reset_foot=(uint32*)forward_block_ptr,*reset_head=(uint32*)va;
-				reset_foot-=2;
-				*reset_foot=0;
-				reset_foot++;
-				*reset_foot=0;
-				void *reset_foot_free=forward_block_ptr;
-				reset_foot_free+=-8+forward_block_size;
-				*(uint32*)reset_foot_free=0;
-				*(--reset_head)=0;
 				set_block_data(va,new_size+ 8,1);
 				struct BlockElement* element=forward_block_ptr;
 				struct BlockElement* prev_free_block=LIST_PREV(element);
@@ -494,16 +479,9 @@ void *realloc_block_FF(void* va, uint32 new_size)
 					LIST_INSERT_HEAD(&(freeBlocksList),element);
 				else
 					LIST_INSERT_AFTER(&(freeBlocksList),prev_free_block,element);
-				element=prev_free_block=NULL;
-				reset_head=reset_foot=reset_foot_free=NULL;
 			}
 			else if(difference_needed>=16) //there is no free block in front of us so we will check if the decreased size is sufficient for a new free block
 			{
-				uint32* reset_foot=(uint32*)forward_block_ptr,*reset_head=(uint32*)va;
-				reset_foot-=2;
-				*reset_foot=0;
-				reset_head--;
-				*reset_head=0;
 				set_block_data(va,new_size+8,1);
 				forward_block_ptr-=difference_needed;
 				set_block_data(forward_block_ptr,difference_needed,0);
@@ -531,11 +509,8 @@ void *realloc_block_FF(void* va, uint32 new_size)
 						}
 					}
 				}
-				element=new_block=NULL;
-				reset_head=reset_foot=NULL;
 
 			}
-			forward_block_ptr=NULL;
 		}
 	}
 	return va;

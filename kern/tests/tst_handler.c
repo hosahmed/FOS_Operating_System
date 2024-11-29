@@ -471,6 +471,8 @@ int tst_kheap(int number_of_arguments, char **arguments)
 				test_krealloc_FF2();
 			else if (testNum==3)
 				test_krealloc_FF3();
+			else if (testNum==4)
+				test_krealloc();
 		}
 		if (isKHeapPlacementStrategyNEXTFIT())
 		{

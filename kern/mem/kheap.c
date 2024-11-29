@@ -35,13 +35,6 @@ uint32 free_count;
 
 //////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////
-// free_user_mem O(1)
-
-//uint32 WorkingSetVA[(0xA0000000 - 0x80000000 - (32<<20) - 4096)/4096];
-//uint32 WorkingSetVA[NUMBER_OF_FRAMES];
-/////////////////////////////////////////////////////
-
 //Initialize the dynamic allocator of kernel heap with the given start address, size & limit
 //All pages in the given range should be allocated
 //Remember: call the initialize_dynamic_allocator(..) to complete the initialization
@@ -778,39 +771,3 @@ void *krealloc(void *virtual_address, uint32 new_size)
 
 	return virtual_address;
 }
-
-//////////////////////////////////////
-/////////FOR TESTING KREALLOC/////////
-//////////////////////////////////////
-void print_allocated_free_blocks()
-{
-	if(block_count == 0)
-	{
-		cprintf("NO ALLOCATED BLOCKS!!!\n\n");
-	}
-	else
-	{
-		cprintf("ALLOCATED BLOCKS :- \n");
-	}
-	for(int i = 0 ; i < block_count ; i++)
-	{
-		cprintf("\nblock #%d  beginVA = %x and size = %d\n", i+1, allocated_blocks[i].va, allocated_blocks[i].size);
-	}
-
-	if(free_count == 0)
-	{
-		cprintf("NO FREE BLOCKS!!!\n\n");
-	}
-	else
-	{
-		cprintf("\nFREE BLOCKS :- \n");
-	}
-	for(int i = 0 ; i < free_count ; i++)
-	{
-		cprintf("\nblock #%d  beginVA = %x and size = %d\n", i+1, free_blocks[i].va, free_blocks[i].size);
-	}
-	cprintf("\n");
-}
-//////////////////////////////////////
-//////////////////////////////////////
-//////////////////////////////////////

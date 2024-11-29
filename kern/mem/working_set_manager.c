@@ -27,9 +27,7 @@ inline struct WorkingSetElement* env_page_ws_list_create_element(struct Env* e, 
 
 	struct WorkingSetElement * newSetElementPtr = kmalloc(sizeof(struct WorkingSetElement));
 	newSetElementPtr->virtual_address = virtual_address;
-
-//	WorkingSetVA[(virtual_address - USER_HEAP_START - (32<<20) - PAGE_SIZE)/PAGE_SIZE] = (uint32) newSetElementPtr;
-
+	ptr_frame_info->KVA = (uint32) newSetElementPtr;
 	return newSetElementPtr;
 
 }

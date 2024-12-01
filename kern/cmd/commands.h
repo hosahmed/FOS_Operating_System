@@ -55,7 +55,6 @@ int command_readuserblock(int number_of_arguments, char **arguments);
 int command_remove_table(int number_of_arguments, char **arguments);
 int command_allocuserpage(int number_of_arguments, char **arguments);
 int command_meminfo(int number_of_arguments, char **arguments);
-int custom_tst(int number_of_arguments, char **arguments);
 
 int command_set_page_rep_FIFO(int number_of_arguments, char **arguments);
 int command_set_page_rep_CLOCK(int number_of_arguments, char **arguments);
@@ -96,5 +95,9 @@ int command_sch_test(int number_of_arguments, char **arguments);
 
 //2023
 int command_tst(int number_of_arguments, char **arguments);
+
+//2024
+int command_set_priority(int number_of_arguments, char **arguments);
+int command_set_starve_thresh(int number_of_arguments, char **arguments);
 
 #endif /* KERN_CMD_COMMANDS_H_ */

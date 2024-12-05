@@ -154,8 +154,9 @@ void fault_handler(struct Trapframe *tf)
 			uint32 MO = pt_get_page_permissions(cur_env->env_page_directory, fault_va);
 
 
-			if ((!(MO & PERM_WRITEABLE)) && (MO & PERM_PRESENT))
+			if (!(MO & PERM_WRITEABLE) && (MO & PERM_PRESENT))
 			{
+				cprintf("\n1\n");
 				env_exit();
 				return;
 			}
@@ -163,6 +164,7 @@ void fault_handler(struct Trapframe *tf)
 
 			if (CHECK_IF_KERNEL_ADDRESS(fault_va))
 			{
+				cprintf("\n2\n");
 				env_exit();
 				return;
 			}
@@ -174,11 +176,12 @@ void fault_handler(struct Trapframe *tf)
 				get_page_table(cur_env->env_page_directory, (uint32) fault_va, &ptr_page_table);
 				if(ptr_page_table == NULL)
 				{
+					cprintf("\n3\n");
 					env_exit();
 					return;
 				}
 				if(!(ptr_page_table[PTX(fault_va)] & PERM_AVAILABLE)) {
-
+					cprintf("\n4\n");
 					env_exit();
 					return;
 				}
@@ -255,14 +258,18 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 		uint32 wsSize = env_page_ws_get_size(faulted_env);
 #endif
 
+	fault_va = ROUNDDOWN(fault_va, PAGE_SIZE);
+
+
 	if(wsSize < (faulted_env->page_WS_max_size))
 	{
 		//cprintf("PLACEMENT=========================WS Size = %d\n", wsSize );
 		//TODO: [PROJECT'24.MS2 - #09] [2] FAULT HANDLER I - Placement
 		// Write your code here, remove the panic and write your code
+		struct WorkingSetElement *newSetElementPtr = env_page_ws_list_create_element(faulted_env, fault_va);
+		LIST_INSERT_TAIL(&(faulted_env->page_WS_list), newSetElementPtr);
 
 		int ret = pf_read_env_page(faulted_env, (void*)fault_va);
-
 
 		if (ret == E_PAGE_NOT_EXIST_IN_PF)
 		{
@@ -272,15 +279,7 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 			{
 			    env_exit();
 			}
-			else
-			{
-				struct WorkingSetElement *newSetElementPtr = env_page_ws_list_create_element(faulted_env, fault_va);
-				LIST_INSERT_TAIL(&(faulted_env->page_WS_list), newSetElementPtr);
-			}
-		}
-		else
-		{
-			LIST_INSERT_TAIL(&(faulted_env->page_WS_list), (struct WorkingSetElement *)fault_va);
+
 		}
 
 		if(LIST_SIZE(&(faulted_env->page_WS_list)) == faulted_env->page_WS_max_size)
@@ -299,9 +298,84 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 	{
 		//cprintf("REPLACEMENT=========================WS Size = %d\n", wsSize );
 		//refer to the project presentation and documentation for details
-		//TODO: [PROJECT'24.MS3] [2] FAULT HANDLER II - Replacement
+		//TODO: [PROJECT'24.MS3 - #01] [2] FAULT HANDLER II - Replacement
 		// Write your code here, remove the panic and write your code
-		panic("page_fault_handler() Replacement is not implemented yet...!!");
+		//panic("page_fault_handler() Replacement is not implemented yet...!!");
+
+		if(isPageReplacmentAlgorithmNchanceCLOCK())
+		{
+			bool normal = 0;
+			int n;
+			if(page_WS_max_sweeps >= 0)
+			{
+				n = page_WS_max_sweeps;
+				normal = 1;
+			}
+			else
+			{
+				n = -page_WS_max_sweeps;
+			}
+
+			while(1)
+			{
+				uint32 page_permissions = pt_get_page_permissions(faulted_env->env_page_directory, faulted_env->page_last_WS_element->virtual_address);
+				// if used = 1
+				if(page_permissions & PERM_USED)
+				{
+					faulted_env->page_last_WS_element->sweeps_counter = 0;
+					pt_set_page_permissions(faulted_env->env_page_directory, faulted_env->page_last_WS_element->virtual_address, 0, PERM_USED);
+				}
+				// if used = 0
+				else
+				{
+					bool condition;
+					faulted_env->page_last_WS_element->sweeps_counter++;
+					if(normal)
+					{
+						condition = faulted_env->page_last_WS_element->sweeps_counter == n;
+					}
+					else
+					{
+						condition = (faulted_env->page_last_WS_element->sweeps_counter == n && !(page_permissions & PERM_MODIFIED)) || (faulted_env->page_last_WS_element->sweeps_counter == n+1 && (page_permissions & PERM_MODIFIED));
+					}
+					if(condition)
+					{
+						faulted_env->page_last_WS_element->sweeps_counter = 0;
+						uint32* ptr_page_table = NULL;
+						get_page_table(faulted_env->env_page_directory, faulted_env->page_last_WS_element->virtual_address, &ptr_page_table);
+						struct FrameInfo *ptr_frame_info = get_frame_info(faulted_env->env_page_directory, faulted_env->page_last_WS_element->virtual_address, &ptr_page_table);
+						if(page_permissions & PERM_MODIFIED)
+						{
+							pf_update_env_page(faulted_env, faulted_env->page_last_WS_element->virtual_address, ptr_frame_info);
+						}
+						map_frame(faulted_env->env_page_directory, ptr_frame_info, fault_va, PERM_USER | PERM_WRITEABLE | PERM_USED);
+						unmap_frame(faulted_env->env_page_directory, faulted_env->page_last_WS_element->virtual_address);
+						faulted_env->page_last_WS_element->virtual_address = fault_va;
+
+						int ret = pf_read_env_page(faulted_env, (void*)fault_va);
+
+						break;
+					}
+				}
+				if(LIST_LAST(&(faulted_env->page_WS_list)) == faulted_env->page_last_WS_element)
+				{
+					faulted_env->page_last_WS_element = LIST_FIRST(&(faulted_env->page_WS_list));
+					faulted_env->page_last_WS_element->virtual_address = (uint32) (LIST_FIRST(&(faulted_env->page_WS_list))->virtual_address);
+				}
+				else
+				{
+					faulted_env->page_last_WS_element = LIST_NEXT(faulted_env->page_last_WS_element);
+				}
+			} // end of while
+			if(LIST_LAST(&(faulted_env->page_WS_list)) == faulted_env->page_last_WS_element)
+			{
+				faulted_env->page_last_WS_element = LIST_FIRST(&(faulted_env->page_WS_list));
+			}
+			else
+			{
+				faulted_env->page_last_WS_element = LIST_NEXT(faulted_env->page_last_WS_element);
+			}
+		}
 	}
 }
 

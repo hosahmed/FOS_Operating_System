@@ -147,7 +147,6 @@ void env_page_ws_print(struct Env *e)
 		{
 			cprintf("EMPTY LOCATION\n");
 		}
-		cprintf("last WSE pointer : %d\n",e->page_last_WS_element);
 	}
 }
 #else

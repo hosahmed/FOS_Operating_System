@@ -260,7 +260,6 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 
 	fault_va = ROUNDDOWN(fault_va, PAGE_SIZE);
 
-
 	if(wsSize < (faulted_env->page_WS_max_size))
 	{
 		//cprintf("PLACEMENT=========================WS Size = %d\n", wsSize );
@@ -284,8 +283,16 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 
 		if(LIST_SIZE(&(faulted_env->page_WS_list)) == faulted_env->page_WS_max_size)
 		{
-			faulted_env->page_last_WS_element = LIST_FIRST(&(faulted_env->page_WS_list));
-			faulted_env->page_last_WS_element->virtual_address = (uint32) (LIST_FIRST(&(faulted_env->page_WS_list))->virtual_address);
+			if(LIST_LAST(&(faulted_env->page_WS_list)) == newSetElementPtr)
+			{
+				faulted_env->page_last_WS_element = LIST_FIRST(&(faulted_env->page_WS_list));
+				faulted_env->page_last_WS_element->virtual_address = (uint32) LIST_FIRST(&(faulted_env->page_WS_list))->virtual_address;
+			}
+			else
+			{
+				faulted_env->page_last_WS_element = LIST_NEXT(newSetElementPtr);
+				faulted_env->page_last_WS_element->virtual_address = (uint32) LIST_NEXT(newSetElementPtr)->virtual_address;
+			}
 		}
 		else
 		{
@@ -352,7 +359,8 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 						unmap_frame(faulted_env->env_page_directory, faulted_env->page_last_WS_element->virtual_address);
 						faulted_env->page_last_WS_element->virtual_address = fault_va;
 
-						int ret = pf_read_env_page(faulted_env, (void*)fault_va);
+						// read page from page file and write it to the frame
+						pf_read_env_page(faulted_env, (void*)fault_va);
 
 						break;
 					}
@@ -360,7 +368,6 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 				if(LIST_LAST(&(faulted_env->page_WS_list)) == faulted_env->page_last_WS_element)
 				{
 					faulted_env->page_last_WS_element = LIST_FIRST(&(faulted_env->page_WS_list));
-					faulted_env->page_last_WS_element->virtual_address = (uint32) (LIST_FIRST(&(faulted_env->page_WS_list))->virtual_address);
 				}
 				else
 				{
@@ -377,6 +384,8 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 			}
 		}
 	}
+	env_page_ws_print(faulted_env);
+	cprintf("\nFAULTED VA = %x\n", fault_va);
 }
 
 void __page_fault_handler_with_buffering(struct Env * curenv, uint32 fault_va)

@@ -323,6 +323,10 @@ void sys_free_user_mem(uint32 virtual_address, uint32 size)
     return;
 
 }
+void sys_env_set_priority(int envID, int priority){
+	syscall(Sys_env_set_priority,envID,priority,0,0,0);
+	return;
+}
 
 
 

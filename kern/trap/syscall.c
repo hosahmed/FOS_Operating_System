@@ -647,6 +647,13 @@ uint32 syscall(uint32 syscallno, uint32 a1, uint32 a2, uint32 a3, uint32 a4,
 	case NSYSCALLS:
 		return -E_INVAL;
 		break;
+
+	//===========================================================
+
+	case Sys_env_set_priority:
+		env_set_priority(a1, a2);
+		return 0;
+		break;
 	}
 	//panic("syscall not implemented");
 	return -E_INVAL;

@@ -248,17 +248,21 @@ void sched_init_PRIRR(uint8 numOfPriorities, uint8 quantum, uint32 starvThresh)
 {
 	//TODO: [PROJECT'24.MS3 - #07] [3] PRIORITY RR Scheduler - sched_init_PRIRR
 	//Your code is here
+
 	//Comment the following line
-	panic("Not implemented yet");
+	//panic("Not implemented yet");
 
 
+	acquire_spinlock(&ProcessQueues.qlock);
+	for(int i = 0; i < numOfPriorities; i++){
+		init_queue(&ProcessQueues.env_ready_queues[i]);
+	}
 
+	quantums[0] = quantum;
+	release_spinlock(&ProcessQueues.qlock);
 
-
-
-
-
-
+	sched_set_starv_thresh(starvThresh);
+	num_of_ready_queues = numOfPriorities;
 	//=========================================
 	//DON'T CHANGE THESE LINES=================
 	uint16 cnt0 = kclock_read_cnt0_latch() ; //read after write to ensure it's set to the desired value
@@ -349,8 +353,25 @@ struct Env* fos_scheduler_PRIRR()
 	/****************************************************************************************/
 	//TODO: [PROJECT'24.MS3 - #08] [3] PRIORITY RR Scheduler - fos_scheduler_PRIRR
 	//Your code is here
+	struct Env *e = get_cpu_proc();
+	if(e != NULL){
+		sched_insert_ready(e);
+	}
+	struct Env* returnEnv;
+	acquire_spinlock(&ProcessQueues.qlock);
+	for(int i = 0 ; i < num_of_ready_queues ; i++){
+		if(queue_size(&ProcessQueues.env_ready_queues[i]) > 0){
+			returnEnv = dequeue(&ProcessQueues.env_ready_queues[i]);
+			set_cpu_proc(returnEnv);
+			break;
+		}
+	}
+
+	kclock_set_quantum(quantums[0]);
+	release_spinlock(&ProcessQueues.qlock);
+	return returnEnv;
 	//Comment the following line
-	panic("Not implemented yet");
+	//panic("Not implemented yet");
 }
 
 //========================================
@@ -363,8 +384,20 @@ void clock_interrupt_handler(struct Trapframe* tf)
 	{
 		//TODO: [PROJECT'24.MS3 - #09] [3] PRIORITY RR Scheduler - clock_interrupt_handler
 		//Your code is here
+		struct Env* currentEnv;
+		acquire_spinlock(&ProcessQueues.qlock);
+		for(int i = 1 ; i < num_of_ready_queues ; i++){
+			for(int j = 0 ;j < queue_size(&ProcessQueues.env_ready_queues[i]); j++){
+				currentEnv = dequeue(&ProcessQueues.env_ready_queues[i]);
+				if(currentEnv->nClocks > starv_thresh){
+					currentEnv->priority--;
+				}
+				sched_insert_ready(currentEnv);
+			}
+		}
+		release_spinlock(&ProcessQueues.qlock);
 		//Comment the following line
-		panic("Not implemented yet");
+		//panic("Not implemented yet");
 	}
 
 

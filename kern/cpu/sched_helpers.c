@@ -706,16 +706,29 @@ void env_set_priority(int envID, int priority)
 	//Get the process of the given ID
 	struct Env* proc ;
 	envid2env(envID, &proc, 0);
+	proc->priority = priority;
 
+	acquire_spinlock(&ProcessQueues.qlock);
+	for (int i = 0 ; i < num_of_ready_queues ; i++)
+	{
+		struct Env * ptr_env = find_env_in_queue(&(ProcessQueues.env_ready_queues[i]), envID);
+		if(ptr_env != NULL){
+			sched_remove_ready(proc);
+			sched_insert_ready(proc);
+			break;
+		}
+	}
+	release_spinlock(&ProcessQueues.qlock);
 	//Your code is here
 	//Comment the following line
-	panic("Not implemented yet");
+	//panic("Not implemented yet");
 }
 
 void sched_set_starv_thresh(uint32 starvThresh)
 {
 	//TODO: [PROJECT'24.MS3 - #06] [3] PRIORITY RR Scheduler - sched_set_starv_thresh
 	//Your code is here
+	starv_thresh = starvThresh;
 	//Comment the following line
-	panic("Not implemented yet");
+	//panic("Not implemented yet");
 }

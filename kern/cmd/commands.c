@@ -78,8 +78,8 @@ struct Command commands[] =
 		/* COMMANDS WITH THREE ARGUMENTS */
 		//********************************//
 		{ "rub", "reads block of bytes from specific location in given environment" ,command_readuserblock, 3},
+		{"schedPRIRR", "initialize scheduler", command_sched_init, 3},
 		//TODO: [PROJECT'24.MS3 - #07] [3] PRIORITY RR Scheduler - initialize command
-
 		//**************************************//
 		/* COMMANDS WITH AT LEAST ONE ARGUMENT */
 		//**************************************//
@@ -231,6 +231,18 @@ int command_readmem_k(int number_of_arguments, char **arguments)
 	int i=0;
 	cprintf("%c",*address);
 	cprintf("\n");
+	return 0;
+}
+
+
+//================================================== Hossam was here
+int command_sched_init(int number_of_arguments, char **arguments)
+{
+	uint8 numOfPriorities = strtol(arguments[1],NULL, 10);
+	uint8 quantum = strtol(arguments[2],NULL, 10);
+	uint32 starvThresh = strtol(arguments[3],NULL, 10);
+
+	sched_init_PRIRR(numOfPriorities, quantum, starvThresh);
 	return 0;
 }
 
@@ -693,7 +705,6 @@ int command_sch_test(int number_of_arguments, char **arguments)
 		cprintf("Testing the scheduler is TURNED ON\n");
 	return 0;
 }
-
 /*2018*///END======================================================
 
 
@@ -913,3 +924,4 @@ int command_tst(int number_of_arguments, char **arguments)
 {
 	return tst_handler(number_of_arguments, arguments);
 }
+

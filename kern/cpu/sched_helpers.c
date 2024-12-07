@@ -714,6 +714,8 @@ void env_set_priority(int envID, int priority)
 		sched_insert_ready(proc);
 	}
 	release_spinlock(&ProcessQueues.qlock);
+
+	cprintf("\nPRIORITY SETTED TO %d SUCCESSFULLY!!\n", proc->priority);
 	//Your code is here
 	//Comment the following line
 	//panic("Not implemented yet");

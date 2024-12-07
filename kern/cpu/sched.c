@@ -251,6 +251,8 @@ void sched_init_PRIRR(uint8 numOfPriorities, uint8 quantum, uint32 starvThresh)
 
 	//Comment the following line
 	//panic("Not implemented yet");
+	kfree(ProcessQueues.env_ready_queues);
+	ProcessQueues.env_ready_queues = kmalloc(sizeof(struct Env_Queue) * numOfPriorities);
 
 	acquire_spinlock(&ProcessQueues.qlock);
 	for(int i = 0; i < numOfPriorities; i++){
@@ -262,6 +264,7 @@ void sched_init_PRIRR(uint8 numOfPriorities, uint8 quantum, uint32 starvThresh)
 	sched_set_starv_thresh(starvThresh);
 	num_of_ready_queues = numOfPriorities;
 
+	cprintf("\nDONE INITALIZATION!!!!!\n");
 	//=========================================
 	//DON'T CHANGE THESE LINES=================
 	uint16 cnt0 = kclock_read_cnt0_latch() ; //read after write to ensure it's set to the desired value
@@ -356,8 +359,7 @@ struct Env* fos_scheduler_PRIRR()
 	if(e != NULL){
 		sched_insert_ready(e);
 	}
-	struct Env* returnEnv;
-	acquire_spinlock(&ProcessQueues.qlock);
+	struct Env* returnEnv = NULL;
 	for(int i = 0 ; i < num_of_ready_queues ; i++){
 		if(queue_size(&ProcessQueues.env_ready_queues[i]) > 0){
 			returnEnv = dequeue(&ProcessQueues.env_ready_queues[i]);
@@ -367,7 +369,7 @@ struct Env* fos_scheduler_PRIRR()
 	}
 
 	kclock_set_quantum(quantums[0]);
-	release_spinlock(&ProcessQueues.qlock);
+
 	return returnEnv;
 	//Comment the following line
 	//panic("Not implemented yet");
@@ -383,18 +385,19 @@ void clock_interrupt_handler(struct Trapframe* tf)
 	{
 		//TODO: [PROJECT'24.MS3 - #09] [3] PRIORITY RR Scheduler - clock_interrupt_handler
 		//Your code is here
-		struct Env* currentEnv;
 		acquire_spinlock(&ProcessQueues.qlock);
+		struct Env* currentEnv;
 		for(int i = 1 ; i < num_of_ready_queues ; i++){
 			for(int j = 0 ;j < queue_size(&ProcessQueues.env_ready_queues[i]); j++){
 				currentEnv = dequeue(&ProcessQueues.env_ready_queues[i]);
-				if(currentEnv->nClocks > starv_thresh){
+				if(ticks > starv_thresh){
 					currentEnv->priority--;
 				}
 				sched_insert_ready(currentEnv);
 			}
 		}
 		release_spinlock(&ProcessQueues.qlock);
+
 		//Comment the following line
 		//panic("Not implemented yet");
 	}

@@ -156,7 +156,6 @@ void fault_handler(struct Trapframe *tf)
 
 			if (!(MO & PERM_WRITEABLE) && (MO & PERM_PRESENT))
 			{
-				cprintf("\n1\n");
 				env_exit();
 				return;
 			}
@@ -164,7 +163,6 @@ void fault_handler(struct Trapframe *tf)
 
 			if (CHECK_IF_KERNEL_ADDRESS(fault_va))
 			{
-				cprintf("\n2\n");
 				env_exit();
 				return;
 			}
@@ -176,12 +174,10 @@ void fault_handler(struct Trapframe *tf)
 				get_page_table(cur_env->env_page_directory, (uint32) fault_va, &ptr_page_table);
 				if(ptr_page_table == NULL)
 				{
-					cprintf("\n3\n");
 					env_exit();
 					return;
 				}
 				if(!(ptr_page_table[PTX(fault_va)] & PERM_AVAILABLE)) {
-					cprintf("\n4\n");
 					env_exit();
 					return;
 				}
@@ -384,8 +380,6 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 			}
 		}
 	}
-	env_page_ws_print(faulted_env);
-	cprintf("\nFAULTED VA = %x\n", fault_va);
 }
 
 void __page_fault_handler_with_buffering(struct Env * curenv, uint32 fault_va)

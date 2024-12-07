@@ -63,7 +63,7 @@ void wakeup_one(struct Channel *chan)
 	if(chan->queue.size != 0)
 	{
 		struct Env* Blocked_process = dequeue(&(chan->queue));
-		sched_insert_ready0(Blocked_process);
+		sched_insert_ready(Blocked_process);
 	}
 
 	release_spinlock(&(ProcessQueues.qlock));
@@ -89,7 +89,7 @@ void wakeup_all(struct Channel *chan)
 	while(chan->queue.size != 0)
 	{
 		struct Env* Blocked_process = dequeue(&(chan->queue));
-		sched_insert_ready0(Blocked_process);
+		sched_insert_ready(Blocked_process);
 	}
 
 	release_spinlock(&(ProcessQueues.qlock));

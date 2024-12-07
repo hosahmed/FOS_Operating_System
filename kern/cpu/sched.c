@@ -252,17 +252,16 @@ void sched_init_PRIRR(uint8 numOfPriorities, uint8 quantum, uint32 starvThresh)
 	//Comment the following line
 	//panic("Not implemented yet");
 
-
 	acquire_spinlock(&ProcessQueues.qlock);
 	for(int i = 0; i < numOfPriorities; i++){
 		init_queue(&ProcessQueues.env_ready_queues[i]);
 	}
-
-	quantums[0] = quantum;
 	release_spinlock(&ProcessQueues.qlock);
 
+	quantums[0] = quantum;
 	sched_set_starv_thresh(starvThresh);
 	num_of_ready_queues = numOfPriorities;
+
 	//=========================================
 	//DON'T CHANGE THESE LINES=================
 	uint16 cnt0 = kclock_read_cnt0_latch() ; //read after write to ensure it's set to the desired value

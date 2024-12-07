@@ -709,14 +709,9 @@ void env_set_priority(int envID, int priority)
 	proc->priority = priority;
 
 	acquire_spinlock(&ProcessQueues.qlock);
-	for (int i = 0 ; i < num_of_ready_queues ; i++)
-	{
-		struct Env * ptr_env = find_env_in_queue(&(ProcessQueues.env_ready_queues[i]), envID);
-		if(ptr_env != NULL){
-			sched_remove_ready(proc);
-			sched_insert_ready(proc);
-			break;
-		}
+	if(proc->env_status == ENV_READY){
+		sched_remove_ready(proc);
+		sched_insert_ready(proc);
 	}
 	release_spinlock(&ProcessQueues.qlock);
 	//Your code is here

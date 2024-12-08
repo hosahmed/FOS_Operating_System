@@ -289,7 +289,9 @@ void* smalloc(char *sharedVarName, uint32 size, uint8 isWritable)
 {
 	//==============================================================
 	//DON'T CHANGE THIS CODE========================================
+
 	if (size == 0) return NULL ;
+
 	//==============================================================
 	//TODO: [PROJECT'24.MS2 - #18] [4] SHARED MEMORY [USER SIDE] - smalloc()
 	// Write your code here, remove the panic and write your code
@@ -297,15 +299,18 @@ void* smalloc(char *sharedVarName, uint32 size, uint8 isWritable)
 
 	if(sys_isUHeapPlacementStrategyFIRSTFIT())
 	{
+
 		size = ROUNDUP(size, PAGE_SIZE);
+
 		uint32 noOfPagesToAllocate = size / PAGE_SIZE;
 		uint32 allocationAddress;
 		bool canAllocate = 0;
-
 		if (env_block_count == 0)
 		{
+
 			if (size <= USER_HEAP_MAX - myEnv->hard_limit - PAGE_SIZE)
 			{
+
 				allocationAddress = myEnv->hard_limit + PAGE_SIZE;
 				env_allocated_blocks[0].va = allocationAddress;
 				env_allocated_blocks[0].size = size;
@@ -337,6 +342,7 @@ void* smalloc(char *sharedVarName, uint32 size, uint8 isWritable)
 			}
 		}
 
+
 		for (uint32 i = 0; i < env_free_count; i++)
 		{
 			if (env_free_blocks[i].size >= size)
@@ -363,6 +369,7 @@ void* smalloc(char *sharedVarName, uint32 size, uint8 isWritable)
 
 		if (!canAllocate)
 		{
+
 			return NULL;
 		}
 
@@ -389,6 +396,8 @@ void* smalloc(char *sharedVarName, uint32 size, uint8 isWritable)
 		env_allocated_blocks[index].va = allocationAddress;
 		env_allocated_blocks[index].size = size;
 		env_block_count++;
+
+
 		int Tst = sys_createSharedObject(sharedVarName, size,  isWritable,(void*) allocationAddress);
 		if(Tst==E_SHARED_MEM_EXISTS || Tst==E_NO_SHARE)
 		{

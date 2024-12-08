@@ -118,6 +118,7 @@ sys_clear_ffl()
 	syscall(SYS_clearFFL,0, 0, 0, 0, 0);
 }
 
+
 int sys_createSharedObject(char* shareName, uint32 size, uint8 isWritable, void* virtual_address)
 {
 	return syscall(SYS_create_shared_object,(uint32)shareName, (uint32)size, isWritable, (uint32)virtual_address,  0);
@@ -327,6 +328,23 @@ void sys_env_set_priority(int envID, int priority){
 	syscall(Sys_env_set_priority,envID,priority,0,0,0);
 	return;
 }
+
+//Semaphores Sys calls
+
+int sys_init_queue(struct Env_Queue *queue)
+{
+	return syscall(SYS_init_queue,(uint32)queue,0,0,0,0);
+}
+
+int sys_enqueue(struct Env_Queue *queue,struct Env *env)
+{
+    return syscall(SYS_enqueue,(uint32)queue,(uint32)env,0,0,0);
+}
+struct Env* sys_dequeue(struct Env_Queue *queue)
+{
+    return (struct Env*)syscall(SYS_dequeue,(uint32)queue,0,0,0,0);
+}
+
 
 
 

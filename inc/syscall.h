@@ -50,10 +50,15 @@ enum
 	NSYSCALLS,
 	/*2024*/
 	//TODO: [PROJECT'24.MS1 - #02] [2] SYSTEM CALLS - Add suitable code here
-	SYS_sbrk,
-	Sys_allocate_user_mem,
-	Sys_free_user_mem,
-	Sys_env_set_priority
+
+	 SYS_sbrk,
+	 Sys_allocate_user_mem,
+	 Sys_free_user_mem,
+	 Sys_env_set_priority,
+	 SYS_init_queue,
+	 SYS_enqueue,
+	 SYS_dequeue
+
 	//=====================================================================
 
 };

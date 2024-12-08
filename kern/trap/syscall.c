@@ -334,19 +334,36 @@ void sys_set_uheap_strategy(uint32 heapStrategy) {
 int sys_init_queue(struct Env_Queue *queue)
 {
     init_queue(queue);
-    cprintf("\n %d \n",queue_size(queue));
     return 0;
 }
 int sys_enqueue(struct Env_Queue *queue,struct Env* env)
 {
-    enqueue(queue,env);
 
+    enqueue(queue,env);
     return 0;
 }
 struct Env* sys_dequeue(struct Env_Queue *queue)
 {
     return dequeue(queue);;
 }
+
+int sys_sched_insert_ready(struct Env* env)
+{
+	acquire_spinlock(&(ProcessQueues.qlock));
+
+	sched_insert_ready(env);
+
+	release_spinlock(&(ProcessQueues.qlock));
+
+    return 0;
+}
+
+//int sys_sleep(struct Channel *chan);
+//{
+//	struct spinlock* lk;
+//
+//    return 0;
+//}
 
 /*******************************/
 /* SHARED MEMORY SYSTEM CALLS */
@@ -686,8 +703,13 @@ uint32 syscall(uint32 syscallno, uint32 a1, uint32 a2, uint32 a3, uint32 a4,
 		sys_dequeue((struct Env_Queue *)a1);
 		return 0;
 		break;
+	case SYS_sched_insert_ready:
+		sys_sched_insert_ready((struct Env*) a1);
+		return 0;
+		break;
 
 	}
+
 	//panic("syscall not implemented");
 	return -E_INVAL;
 }

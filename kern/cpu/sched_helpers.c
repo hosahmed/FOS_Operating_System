@@ -49,7 +49,7 @@ int queue_size(struct Env_Queue* queue)
 //====================================
 void enqueue(struct Env_Queue* queue, struct Env* env)
 {
-	assert(queue != NULL)	;
+	assert(queue != NULL);
 	if(env != NULL)
 	{
 		LIST_INSERT_HEAD(queue, env);

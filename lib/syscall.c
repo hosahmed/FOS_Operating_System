@@ -338,11 +338,17 @@ int sys_init_queue(struct Env_Queue *queue)
 
 int sys_enqueue(struct Env_Queue *queue,struct Env *env)
 {
+
     return syscall(SYS_enqueue,(uint32)queue,(uint32)env,0,0,0);
 }
 struct Env* sys_dequeue(struct Env_Queue *queue)
 {
     return (struct Env*)syscall(SYS_dequeue,(uint32)queue,0,0,0,0);
+}
+
+int	sys_sched_insert_ready(struct Env* env)
+{
+	return syscall(SYS_sched_insert_ready,(uint32)env,0,0,0,0);
 }
 
 

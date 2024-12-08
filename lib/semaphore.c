@@ -8,10 +8,9 @@ struct semaphore create_semaphore(char *semaphoreName, uint32 value)
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
 	//panic("create_semaphore is not implemented yet");
 	//CHECK FOR WRITABLE
-	uint32 size =sizeof(struct semaphore)+sizeof(struct __semdata);
 
 	struct semaphore created_semaphore;
-	struct __semdata* created_semdata = smalloc(semaphoreName, sizeof(struct __semdata), 1);
+	struct __semdata* created_semdata = smalloc(semaphoreName, sizeof(struct __semdata),1);
 
 	created_semdata->count=value;
 	created_semdata->lock=0;
@@ -49,17 +48,21 @@ void wait_semaphore(struct semaphore sem)
 	{
 		xchg(&keyw, sem.semdata->lock);
 	}while (keyw != 0);
-
+	struct Env *current_env =(struct Env *)myEnv;
 	sem.semdata->count--;
 
 	if (sem.semdata->count < 0)
 	{
 		//place this process in s.queue
-		sys_enqueue(&(sem.semdata->queue),(struct Env *)myEnv);
+
+		sys_enqueue(&(sem.semdata->queue),current_env);
 		//block this process (must also set s.lock = 0)
 		myEnv->env_status = ENV_BLOCKED;
+
 		sem.semdata->lock = 0;
+
 	}
+
 	sem.semdata->lock = 0;
 }
 
@@ -80,7 +83,7 @@ void signal_semaphore(struct semaphore sem)
 	if (sem.semdata->count <= 0)
 	{
 		struct Env* retrieved_process = sys_dequeue(&(sem.semdata->queue));
-
+		sys_sched_insert_ready(retrieved_process);
 	}
 	sem.semdata->lock = 0;
 }

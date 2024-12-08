@@ -6,7 +6,6 @@ void
 _main(void)
 {
 	int envID = sys_getenvid();
-
 	struct semaphore cs1 = create_semaphore("cs1", 1);
 	struct semaphore depend1 = create_semaphore("depend1", 0);
 

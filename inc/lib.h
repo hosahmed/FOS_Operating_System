@@ -86,8 +86,8 @@ int 	sys_pf_calculate_allocated_pages(void);
 //Semaphores
 
 int 	sys_init_queue(struct Env_Queue *queue);
-int 	sys_enqueue(struct Env_Queue *queue,struct Env* env);
-struct Env* 	sys_dequeue(struct Env_Queue *queue);
+int 	sys_enqueue(struct Env_Queue *queue);
+int 	sys_dequeue(struct Env_Queue *queue);
 int		sys_sched_insert_ready(struct Env* env);
 //int 	sys_sleep(struct Channel *chan, struct spinlock* lk);
 

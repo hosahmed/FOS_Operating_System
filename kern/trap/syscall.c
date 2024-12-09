@@ -336,21 +336,37 @@ int sys_init_queue(struct Env_Queue *queue)
     init_queue(queue);
     return 0;
 }
-int sys_enqueue(struct Env_Queue *queue,struct Env* env)
+int sys_enqueue(struct Env_Queue *queue)
 {
-
+	struct Env* env= get_cpu_proc();
+	acquire_spinlock(&(ProcessQueues.qlock));
+	env->env_status = ENV_BLOCKED;
     enqueue(queue,env);
+    sched();
+    //cprintf("\n my id = %d and my queue size is = %d\n",env->env_id,queue_size(queue));
+    release_spinlock(&(ProcessQueues.qlock));
     return 0;
 }
-struct Env* sys_dequeue(struct Env_Queue *queue)
+int sys_dequeue(struct Env_Queue *queue)
 {
-    return dequeue(queue);;
+	acquire_spinlock(&(ProcessQueues.qlock));
+
+	//	cprintf("My queue id = %d \n",envItem->env_id);
+	struct Env* env= dequeue(queue);
+
+	sched_insert_ready(env);
+
+	release_spinlock(&(ProcessQueues.qlock));
+
+	//struct Env* env= dequeue(queue);
+	//cprintf("\n my id = %d and my queue size is = %d\n",env->env_id,queue_size(queue));
+    return 0;
 }
 
 int sys_sched_insert_ready(struct Env* env)
 {
 	acquire_spinlock(&(ProcessQueues.qlock));
-
+//	cprintf("My queue id = %d \n",envItem->env_id);
 	sched_insert_ready(env);
 
 	release_spinlock(&(ProcessQueues.qlock));
@@ -358,12 +374,8 @@ int sys_sched_insert_ready(struct Env* env)
     return 0;
 }
 
-//int sys_sleep(struct Channel *chan);
-//{
-//	struct spinlock* lk;
-//
-//    return 0;
-//}
+
+
 
 /*******************************/
 /* SHARED MEMORY SYSTEM CALLS */
@@ -695,7 +707,7 @@ uint32 syscall(uint32 syscallno, uint32 a1, uint32 a2, uint32 a3, uint32 a4,
 		break;
 
 	case SYS_enqueue:
-		sys_enqueue((struct Env_Queue *)a1,(struct Env *)a2);
+		sys_enqueue((struct Env_Queue *)a1);
 		return 0;
 		break;
 

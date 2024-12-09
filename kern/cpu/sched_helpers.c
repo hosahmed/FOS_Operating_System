@@ -63,10 +63,12 @@ struct Env* dequeue(struct Env_Queue* queue)
 {
 	if (queue == NULL) return NULL;
 	struct Env* envItem = LIST_LAST(queue);
+
 	if (envItem != NULL)
 	{
 		LIST_REMOVE(queue, envItem);
 	}
+
 	return envItem;
 }
 
@@ -150,7 +152,6 @@ void sched_insert_ready(struct Env* env)
 	if(!holding_spinlock(&ProcessQueues.qlock))
 		panic("sched: q.lock is not held by this CPU while it's expected to be.");
 	/*********************************************************************/
-
 	assert(env != NULL);
 	{
 		//cprintf("\nInserting %d into ready queue 0\n", env->env_id);

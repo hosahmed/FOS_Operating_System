@@ -490,6 +490,7 @@ void env_exit(void)
 {
 	struct Env* cur_env = get_cpu_proc();
 	assert(cur_env != NULL);
+	//cprintf("\n my id is %d byeeeee\n",cur_env->env_id);
 	sched_exit_env(cur_env->env_id);
 	//2024: Replaced by context switch
 	//fos_scheduler();

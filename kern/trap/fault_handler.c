@@ -156,6 +156,7 @@ void fault_handler(struct Trapframe *tf)
 
 			if (!(MO & PERM_WRITEABLE) && (MO & PERM_PRESENT))
 			{
+				//cprintf("\n hello1 \n");
 				env_exit();
 				return;
 			}

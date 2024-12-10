@@ -363,20 +363,6 @@ int sys_dequeue(struct Env_Queue *queue)
     return 0;
 }
 
-int sys_sched_insert_ready(struct Env* env)
-{
-	acquire_spinlock(&(ProcessQueues.qlock));
-//	cprintf("My queue id = %d \n",envItem->env_id);
-	sched_insert_ready(env);
-
-	release_spinlock(&(ProcessQueues.qlock));
-
-    return 0;
-}
-
-
-
-
 /*******************************/
 /* SHARED MEMORY SYSTEM CALLS */
 /*******************************/
@@ -715,11 +701,6 @@ uint32 syscall(uint32 syscallno, uint32 a1, uint32 a2, uint32 a3, uint32 a4,
 		sys_dequeue((struct Env_Queue *)a1);
 		return 0;
 		break;
-	case SYS_sched_insert_ready:
-		sys_sched_insert_ready((struct Env*) a1);
-		return 0;
-		break;
-
 	}
 
 	//panic("syscall not implemented");

@@ -58,7 +58,6 @@ enum
 	 SYS_init_queue,
 	 SYS_enqueue,
 	 SYS_dequeue,
-	 SYS_sched_insert_ready
 
 	//=====================================================================
 

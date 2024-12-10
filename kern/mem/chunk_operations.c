@@ -227,12 +227,12 @@ void free_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 
 	if(e->page_last_WS_element != NULL)
 	{
-		struct WorkingSetElement * it = e->page_last_WS_element;
-		while(LIST_FIRST(&(e->page_WS_list)) != it)
+		struct WorkingSetElement * it = LIST_FIRST(&(e->page_WS_list));
+		while(it != e->page_last_WS_element)
 		{
-			LIST_INSERT_TAIL(&(e->page_WS_list), it);
 			LIST_REMOVE(&(e->page_WS_list), it);
-			it = LIST_NEXT(it);
+			LIST_INSERT_TAIL(&(e->page_WS_list), it);
+			it = LIST_FIRST(&(e->page_WS_list));
 		}
 	}
 

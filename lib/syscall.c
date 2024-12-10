@@ -336,10 +336,10 @@ int sys_init_queue(struct Env_Queue *queue)
 	return syscall(SYS_init_queue,(uint32)queue,0,0,0,0);
 }
 
-int sys_enqueue(struct Env_Queue *queue)
+int sys_enqueue(struct Env_Queue *queue,struct semaphore* sem)
 {
 
-    return syscall(SYS_enqueue,(uint32)queue,(uint32)myEnv,0,0,0);
+    return syscall(SYS_enqueue,(uint32)queue,(uint32)sem,0,0,0);
 }
 int sys_dequeue(struct Env_Queue *queue)
 {

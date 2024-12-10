@@ -279,22 +279,10 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 
 		}
 
-		if(LIST_SIZE(&(faulted_env->page_WS_list)) == faulted_env->page_WS_max_size)
+		if(LIST_SIZE(&(faulted_env->page_WS_list)) == faulted_env->page_WS_max_size && faulted_env->page_last_WS_element == NULL)
 		{
-			if(LIST_LAST(&(faulted_env->page_WS_list)) == newSetElementPtr)
-			{
-				faulted_env->page_last_WS_element = LIST_FIRST(&(faulted_env->page_WS_list));
-				faulted_env->page_last_WS_element->virtual_address = (uint32) LIST_FIRST(&(faulted_env->page_WS_list))->virtual_address;
-			}
-			else
-			{
-				faulted_env->page_last_WS_element = LIST_NEXT(newSetElementPtr);
-				faulted_env->page_last_WS_element->virtual_address = (uint32) LIST_NEXT(newSetElementPtr)->virtual_address;
-			}
-		}
-		else
-		{
-			faulted_env->page_last_WS_element = NULL;
+			faulted_env->page_last_WS_element = LIST_FIRST(&(faulted_env->page_WS_list));
+			faulted_env->page_last_WS_element->virtual_address = (uint32) LIST_FIRST(&(faulted_env->page_WS_list))->virtual_address;
 		}
 
 		//refer to the project presentation and documentation for details

@@ -212,6 +212,10 @@ void free_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 		if(ptr_frame_info != NULL)
 		{
 			struct WorkingSetElement *wsElement = (struct WorkingSetElement *) ptr_frame_info->KVA;
+			if(e->page_last_WS_element == wsElement)
+			{
+				e->page_last_WS_element = LIST_NEXT(e->page_last_WS_element);
+			}
 			LIST_REMOVE(&(e->page_WS_list), wsElement);
 			kfree(wsElement);
 			pf_remove_env_page(e, ROUNDDOWN(va, PAGE_SIZE));
@@ -219,6 +223,17 @@ void free_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 		}
 		unmap_frame(e->env_page_directory, va);
 		ptr_page_table[PTX(va)] = 0;
+	}
+
+	if(e->page_last_WS_element != NULL)
+	{
+		struct WorkingSetElement * it = e->page_last_WS_element;
+		while(LIST_FIRST(&(e->page_WS_list)) != it)
+		{
+			LIST_INSERT_TAIL(&(e->page_WS_list), it);
+			LIST_REMOVE(&(e->page_WS_list), it);
+			it = LIST_NEXT(it);
+		}
 	}
 
 

@@ -1,5 +1,4 @@
 #include "kheap.h"
-
 #include <inc/memlayout.h>
 #include <inc/dynamic_allocator.h>
 #include "memory_manager.h"
@@ -17,10 +16,16 @@ struct FreeBlock {
     uint32 size;
 };
 
-struct PageBlock allocated_blocks[NUM_OF_KHEAP_PAGES];
-struct FreeBlock free_blocks[NUM_OF_KHEAP_PAGES/2];
-uint32 block_count;
-uint32 free_count;
+struct spinlock arrayslock; //Use it to protect the arrays in the kernel
+
+struct
+{
+	struct PageBlock allocated_blocks[NUM_OF_KHEAP_PAGES];
+	struct FreeBlock free_blocks[NUM_OF_KHEAP_PAGES/2];
+	uint32 block_count;
+	uint32 free_count;
+
+} AllArrays;
 
 //////////////////////////////////////////////////////
 
@@ -54,6 +59,7 @@ int initialize_kheap_dynamic_allocator(uint32 daStart, uint32 initSizeToAllocate
 		iterator += 4096;
 	}
 
+	init_spinlock(&(arrayslock), "kern_lock");
 	initialize_dynamic_allocator(start, initSizeToAllocate);
 	return 0;
 }
@@ -106,38 +112,40 @@ void* kmalloc(unsigned int size)
 	//TODO: [PROJECT'24.MS2 - #03] [1] KERNEL HEAP - kmalloc
 	// Write your code here, remove the panic and write your code
 	// use "isKHeapPlacementStrategyFIRSTFIT() ..." functions to check the current strategy
-
+	acquire_spinlock(&(arrayslock));
 	if (isKHeapPlacementStrategyFIRSTFIT())
     {
         if (size <= DYN_ALLOC_MAX_BLOCK_SIZE)
         {
-            return alloc_block_FF(size);
+        	void* va = alloc_block_FF(size);
+        	release_spinlock(&(arrayslock));
+            return va;
         }
         else
         {
-            size = ROUNDUP(size, PAGE_SIZE);
+        	size = ROUNDUP(size, PAGE_SIZE);
             uint32 noOfPagesToAllocate = size / PAGE_SIZE;
             uint32 allocationAddress;
             bool canAllocate = 0;
 
-            if (block_count == 0)
+            if (AllArrays.block_count == 0)
             {
                 if (size <= KERNEL_HEAP_MAX - hardLimit - PAGE_SIZE)
                 {
                     allocationAddress = hardLimit + PAGE_SIZE;
-                    allocated_blocks[0].va = allocationAddress;
-                    allocated_blocks[0].size = size;
-                    block_count = 1;
+                    AllArrays.allocated_blocks[0].va = allocationAddress;
+                    AllArrays.allocated_blocks[0].size = size;
+                    AllArrays.block_count = 1;
 
                     if (size < KERNEL_HEAP_MAX - hardLimit - PAGE_SIZE)
                     {
-                        free_blocks[0].va = allocationAddress + size;
-                        free_blocks[0].size = (KERNEL_HEAP_MAX - hardLimit - PAGE_SIZE) - size;
-                        free_count = 1;
+                        AllArrays.free_blocks[0].va = allocationAddress + size;
+                        AllArrays.free_blocks[0].size = (KERNEL_HEAP_MAX - hardLimit - PAGE_SIZE) - size;
+                        AllArrays.free_count = 1;
                     }
                     else
                     {
-                        free_count = 0;
+                        AllArrays.free_count = 0;
                     }
 
                     for (uint32 i = 0; i < noOfPagesToAllocate; i++) {
@@ -147,30 +155,31 @@ void* kmalloc(unsigned int size)
                         ptr_frame_info->va = allocationAddress;
                         allocationAddress += PAGE_SIZE;
                     }
-
-                    return (void*)(allocated_blocks[0].va);
+                    release_spinlock(&(arrayslock));
+                    return (void*)(AllArrays.allocated_blocks[0].va);
                 }
                 else
                 {
+                	release_spinlock(&(arrayslock));
                     return NULL;
                 }
             }
 
-            for (uint32 i = 0; i < free_count; i++)
+            for (uint32 i = 0; i < AllArrays.free_count; i++)
             {
-                if (free_blocks[i].size >= size)
+                if (AllArrays.free_blocks[i].size >= size)
                 {
-                    allocationAddress = free_blocks[i].va;
+                    allocationAddress = AllArrays.free_blocks[i].va;
 
-                    if (free_blocks[i].size == size)
+                    if (AllArrays.free_blocks[i].size == size)
                     {
-                        memmove(&free_blocks[i], &free_blocks[i + 1], (free_count - i - 1) * sizeof(struct FreeBlock));
-                        free_count--;
+                        memmove(&AllArrays.free_blocks[i], &AllArrays.free_blocks[i + 1], (AllArrays.free_count - i - 1) * sizeof(struct FreeBlock));
+                        AllArrays.free_count--;
                     }
                     else
                     {
-                        free_blocks[i].size -= size;
-                        free_blocks[i].va += size;
+                        AllArrays.free_blocks[i].size -= size;
+                        AllArrays.free_blocks[i].va += size;
                     }
 
                     canAllocate = 1;
@@ -180,16 +189,17 @@ void* kmalloc(unsigned int size)
 
             if (!canAllocate)
             {
+            	release_spinlock(&(arrayslock));
             	return NULL;
             }
 
             uint32 left = 0;
-            uint32 right = block_count;
+            uint32 right = AllArrays.block_count;
 
             while (left < right)
             {
                 uint32 mid = left + (right - left) / 2 ;
-                if (allocated_blocks[mid].va < allocationAddress)
+                if (AllArrays.allocated_blocks[mid].va < allocationAddress)
                 {
                 	left = mid + 1;
                 }
@@ -200,10 +210,10 @@ void* kmalloc(unsigned int size)
             }
 
             uint32 index = left;
-            memmove(&allocated_blocks[index + 1], &allocated_blocks[index], (block_count - index) * sizeof(struct PageBlock));
-            allocated_blocks[index].va = allocationAddress;
-            allocated_blocks[index].size = size;
-            block_count++;
+            memmove(&AllArrays.allocated_blocks[index + 1], &AllArrays.allocated_blocks[index], (AllArrays.block_count - index) * sizeof(struct PageBlock));
+            AllArrays.allocated_blocks[index].va = allocationAddress;
+            AllArrays.allocated_blocks[index].size = size;
+            AllArrays.block_count++;
 
             for (uint32 i = 0 ; i < noOfPagesToAllocate; i++)
             {
@@ -213,11 +223,11 @@ void* kmalloc(unsigned int size)
                 ptr_frame_info->va = allocationAddress;
                 allocationAddress += PAGE_SIZE;
             }
-
+            release_spinlock(&(arrayslock));
             return (void*)(allocationAddress - (PAGE_SIZE * noOfPagesToAllocate));
         }
     }
-
+	release_spinlock(&(arrayslock));
     return NULL;
 }
 
@@ -225,12 +235,13 @@ void kfree(void* virtual_address)
 {
 	//TODO: [PROJECT'24.MS2 - #04] [1] KERNEL HEAP - kfree
 	// Write your code here, remove the panic and write your code
-
+	acquire_spinlock(&(arrayslock));
     uint32 address = (uint32)virtual_address;
 
     if (address > start && address < hardLimit)
     {
         free_block(virtual_address);
+        release_spinlock(&(arrayslock));
         return;
     }
     else if (address >= hardLimit + PAGE_SIZE && address < KERNEL_HEAP_MAX)
@@ -241,23 +252,23 @@ void kfree(void* virtual_address)
         int index = -1;
 
         int left = 0;
-        int right = block_count - 1;
+        int right = AllArrays.block_count - 1;
         while (left <= right)
         {
             int mid = left + (right - left) / 2;
 
-            if (allocated_blocks[mid].va == address)
+            if (AllArrays.allocated_blocks[mid].va == address)
             {
-                noOfFrames = allocated_blocks[mid].size / PAGE_SIZE;
-                size = allocated_blocks[mid].size;
+                noOfFrames = AllArrays.allocated_blocks[mid].size / PAGE_SIZE;
+                size = AllArrays.allocated_blocks[mid].size;
                 index = mid;
 
-                memmove(&allocated_blocks[mid], &allocated_blocks[mid + 1],
-                        (block_count - mid - 1) * sizeof(struct PageBlock));
-                block_count--;
+                memmove(&AllArrays.allocated_blocks[mid], &AllArrays.allocated_blocks[mid + 1],
+                        (AllArrays.block_count - mid - 1) * sizeof(struct PageBlock));
+                AllArrays.block_count--;
                 break;
             }
-            else if (allocated_blocks[mid].va < address)
+            else if (AllArrays.allocated_blocks[mid].va < address)
             {
                 left = mid + 1;
             }
@@ -269,6 +280,7 @@ void kfree(void* virtual_address)
 
         if (index == -1)
         {
+        	release_spinlock(&(arrayslock));
             return;
         }
 
@@ -277,12 +289,12 @@ void kfree(void* virtual_address)
         newFreeBlock.size = size;
 
         left = 0;
-		right = free_count - 1;
+		right = AllArrays.free_count - 1;
 		while (left <= right)
 		{
 			int mid = left + (right - left) / 2;
 
-			if (free_blocks[mid].va < newFreeBlock.va)
+			if (AllArrays.free_blocks[mid].va < newFreeBlock.va)
 			{
 				left = mid + 1;
 			}
@@ -294,36 +306,36 @@ void kfree(void* virtual_address)
 
 		int insertIndex = left;
 
-        if (free_count > 0 && insertIndex < free_count)
+        if (AllArrays.free_count > 0 && insertIndex < AllArrays.free_count)
         {
-            memmove(&free_blocks[insertIndex + 1], &free_blocks[insertIndex],
-                    (free_count - insertIndex) * sizeof(struct FreeBlock));
+            memmove(&AllArrays.free_blocks[insertIndex + 1], &AllArrays.free_blocks[insertIndex],
+                    (AllArrays.free_count - insertIndex) * sizeof(struct FreeBlock));
         }
-        free_blocks[insertIndex] = newFreeBlock;
-        free_count++;
+        AllArrays.free_blocks[insertIndex] = newFreeBlock;
+        AllArrays.free_count++;
 
         if (insertIndex > 0)
         {
-            struct FreeBlock* prevBlock = &free_blocks[insertIndex - 1];
+            struct FreeBlock* prevBlock = &AllArrays.free_blocks[insertIndex - 1];
             if (prevBlock->va + prevBlock->size == newFreeBlock.va)
             {
                 prevBlock->size += newFreeBlock.size;
-                memmove(&free_blocks[insertIndex], &free_blocks[insertIndex + 1],
-                        (free_count - insertIndex - 1) * sizeof(struct FreeBlock));
-                free_count--;
+                memmove(&AllArrays.free_blocks[insertIndex], &AllArrays.free_blocks[insertIndex + 1],
+                        (AllArrays.free_count - insertIndex - 1) * sizeof(struct FreeBlock));
+                AllArrays.free_count--;
                 insertIndex--;
             }
         }
 
-        if (insertIndex < free_count - 1)
+        if (insertIndex < AllArrays.free_count - 1)
         {
-            struct FreeBlock* nextBlock = &free_blocks[insertIndex + 1];
+            struct FreeBlock* nextBlock = &AllArrays.free_blocks[insertIndex + 1];
             if (newFreeBlock.va + newFreeBlock.size == nextBlock->va)
             {
-                free_blocks[insertIndex].size += nextBlock->size;
-                memmove(&free_blocks[insertIndex + 1], &free_blocks[insertIndex + 2],
-                        (free_count - insertIndex - 2) * sizeof(struct FreeBlock));
-                free_count--;
+                AllArrays.free_blocks[insertIndex].size += nextBlock->size;
+                memmove(&AllArrays.free_blocks[insertIndex + 1], &AllArrays.free_blocks[insertIndex + 2],
+                        (AllArrays.free_count - insertIndex - 2) * sizeof(struct FreeBlock));
+                AllArrays.free_count--;
             }
         }
 
@@ -335,9 +347,10 @@ void kfree(void* virtual_address)
     }
     else
     {
-        panic("invalid address");
+    	release_spinlock(&(arrayslock));
+        return;
     }
-
+    release_spinlock(&(arrayslock));
     //you need to get the size of the given allocation using its address
 	//refer to the project presentation and documentation for details
 }
@@ -346,19 +359,23 @@ unsigned int kheap_physical_address(unsigned int virtual_address)
 {
 	//TODO: [PROJECT'24.MS2 - #05] [1] KERNEL HEAP - kheap_physical_address
 	// Write your code here, remove the panic and write your code
-
+	acquire_spinlock(&(arrayslock));
 	uint32 *ptr_table ;
 	int w=get_page_table(ptr_page_directory, virtual_address, &ptr_table);
 
 	if (w==TABLE_NOT_EXIST)
+	{
+		release_spinlock(&(arrayslock));
 		return 0;
-
+	}
 	if(((ptr_table[PTX(virtual_address)] & PERM_PRESENT)))
 	{
-	      return (unsigned int) ((ptr_table[PTX(virtual_address)] ) & 0xFFFFF000) +(virtual_address & 0x00000FFF);
+		release_spinlock(&(arrayslock));
+	    return (unsigned int) ((ptr_table[PTX(virtual_address)] ) & 0xFFFFF000) +(virtual_address & 0x00000FFF);
 	}
 	else
 	{
+		release_spinlock(&(arrayslock));
 		return 0;
 	}
 	//return the physical address corresponding to given virtual_address
@@ -373,14 +390,21 @@ unsigned int kheap_virtual_address(unsigned int physical_address)
 	// Write your code here, remove the panic and write your code
 
 	//panic("kheap_virtual_address() is not implemented yet...!!");
-
+	acquire_spinlock(&(arrayslock));
 	unsigned int obtained_offset=PGOFF(physical_address);
 
 	struct FrameInfo* frame = to_frame_info(physical_address);
 	if(frame->va == 0)
+	{
+		release_spinlock(&(arrayslock));
 		return 0;
+	}
+
 	else
+	{
+		release_spinlock(&(arrayslock));
 		return frame->va + obtained_offset;
+	}
 
 	//return the virtual address corresponding to given physical_address
 	//refer to the project presentation and documentation for details
@@ -404,16 +428,18 @@ void *krealloc(void *virtual_address, uint32 new_size)
 {
 	//TODO: [PROJECT'24.MS2 - BONUS#1] [1] KERNEL HEAP - krealloc
 	// Write your code here, remove the panic and write your code
-
+	acquire_spinlock(&(arrayslock));
 	// case 1
 	if(virtual_address == NULL && new_size != 0)
 	{
+		release_spinlock(&(arrayslock));
 		return kmalloc(new_size);
 	}
 
 	// case 2
 	if(virtual_address != NULL && new_size == 0)
 	{
+		release_spinlock(&(arrayslock));
 		kfree(virtual_address);
 		return NULL;
 	}
@@ -421,6 +447,7 @@ void *krealloc(void *virtual_address, uint32 new_size)
 	// case 3
 	if(virtual_address == NULL && new_size == 0)
 	{
+		release_spinlock(&(arrayslock));
 		return NULL;
 	}
 
@@ -433,25 +460,37 @@ void *krealloc(void *virtual_address, uint32 new_size)
 		if(new_size <= DYN_ALLOC_MAX_BLOCK_SIZE)
 		{
 			if(!is_free_block(virtual_address))
+			{
+				release_spinlock(&(arrayslock));
 				return realloc_block_FF(virtual_address, new_size);
+			}
 			else
+			{
+				release_spinlock(&(arrayslock));
 				return NULL;
+			}
 		}
 		// block -> page (case 5)
 		else
 		{
 			if(is_free_block(virtual_address))
+			{
+				release_spinlock(&(arrayslock));
 				return NULL;
-
+			}
+			release_spinlock(&(arrayslock));
 			void* newVA = kmalloc(new_size);
+			acquire_spinlock(&(arrayslock));
 			if(newVA)
 			{
 				memcpy(newVA, virtual_address, get_block_size(virtual_address) - 8);
+				release_spinlock(&(arrayslock));
 				kfree(virtual_address);
 				return newVA;
 			}
 			else
 			{
+				release_spinlock(&(arrayslock));
 				return NULL;
 			}
 		}
@@ -463,15 +502,19 @@ void *krealloc(void *virtual_address, uint32 new_size)
 		// page -> block (case 6)
 		if(new_size <= DYN_ALLOC_MAX_BLOCK_SIZE)
 		{
+			release_spinlock(&(arrayslock));
 			void* newVA = kmalloc(new_size);
+			acquire_spinlock(&(arrayslock));
 			if(newVA)
 			{
 				memcpy(newVA, virtual_address, new_size);
+				release_spinlock(&(arrayslock));
 				kfree(virtual_address);
 				return newVA;
 			}
 			else
 			{
+				release_spinlock(&(arrayslock));
 				return NULL;
 			}
 		}
@@ -482,11 +525,12 @@ void *krealloc(void *virtual_address, uint32 new_size)
 
 			if(new_size > KERNEL_HEAP_MAX - hardLimit - PAGE_SIZE)
 			{
-				return NULL;
+				release_spinlock(&(arrayslock));
+				return virtual_address;
 			}
 
 			int left = 0;
-			int right = block_count - 1;
+			int right = AllArrays.block_count - 1;
 			int allocatedBlockIndex = -1;
 			uint32 nextBlockVA;
 
@@ -494,13 +538,13 @@ void *krealloc(void *virtual_address, uint32 new_size)
 			{
 				int mid = left + (right - left) / 2;
 
-				if (allocated_blocks[mid].va == address)
+				if (AllArrays.allocated_blocks[mid].va == address)
 				{
 					allocatedBlockIndex = mid;
-					nextBlockVA = allocated_blocks[mid].va + allocated_blocks[mid].size;
+					nextBlockVA = AllArrays.allocated_blocks[mid].va + AllArrays.allocated_blocks[mid].size;
 					break;
 				}
-				else if (allocated_blocks[mid].va < address)
+				else if (AllArrays.allocated_blocks[mid].va < address)
 				{
 					left = mid + 1;
 				}
@@ -512,42 +556,47 @@ void *krealloc(void *virtual_address, uint32 new_size)
 
 			if(allocatedBlockIndex == -1)
 			{
+				release_spinlock(&(arrayslock));
 				return NULL;
 			}
 
 			// special case (there is no next block then reallocate and if done free the old heap space)
 			if(nextBlockVA == KERNEL_HEAP_MAX)
 			{
-				if(new_size > allocated_blocks[allocatedBlockIndex].size)
+				if(new_size > AllArrays.allocated_blocks[allocatedBlockIndex].size)
 				{
-					int copySize = allocated_blocks[allocatedBlockIndex].size;
+					int copySize = AllArrays.allocated_blocks[allocatedBlockIndex].size;
+					release_spinlock(&(arrayslock));
 					void* newVA = kmalloc(new_size);
+					acquire_spinlock(&(arrayslock));
 					if(newVA)
 					{
 						memcpy(newVA, virtual_address, copySize);
+						release_spinlock(&(arrayslock));
 						kfree(virtual_address);
 						return newVA;
 					}
 					else
 					{
-						return NULL;
+						release_spinlock(&(arrayslock));
+						return virtual_address;
 					}
 				}
-				else if(new_size < allocated_blocks[allocatedBlockIndex].size)
+				else if(new_size < AllArrays.allocated_blocks[allocatedBlockIndex].size)
 				{
-					int noOfFramesToDellaocate = (allocated_blocks[allocatedBlockIndex].size - new_size) / PAGE_SIZE;
+					int noOfFramesToDellaocate = (AllArrays.allocated_blocks[allocatedBlockIndex].size - new_size) / PAGE_SIZE;
 
 					struct FreeBlock newFreeBlock;
-					newFreeBlock.va = allocated_blocks[allocatedBlockIndex].va + new_size;
-					newFreeBlock.size = allocated_blocks[allocatedBlockIndex].size - new_size;
+					newFreeBlock.va = AllArrays.allocated_blocks[allocatedBlockIndex].va + new_size;
+					newFreeBlock.size = AllArrays.allocated_blocks[allocatedBlockIndex].size - new_size;
 
 					left = 0;
-					right = free_count - 1;
+					right = AllArrays.free_count - 1;
 					while (left <= right)
 					{
 						int mid = left + (right - left) / 2;
 
-						if (free_blocks[mid].va < newFreeBlock.va)
+						if (AllArrays.free_blocks[mid].va < newFreeBlock.va)
 						{
 							left = mid + 1;
 						}
@@ -559,17 +608,17 @@ void *krealloc(void *virtual_address, uint32 new_size)
 
 					int insertIndex = left;
 
-					if (free_count > 0 && insertIndex < free_count)
+					if (AllArrays.free_count > 0 && insertIndex < AllArrays.free_count)
 					{
-						memmove(&free_blocks[insertIndex + 1], &free_blocks[insertIndex],
-								(free_count - insertIndex) * sizeof(struct FreeBlock));
+						memmove(&AllArrays.free_blocks[insertIndex + 1], &AllArrays.free_blocks[insertIndex],
+								(AllArrays.free_count - insertIndex) * sizeof(struct FreeBlock));
 					}
-					free_blocks[insertIndex] = newFreeBlock;
-					free_count++;
+					AllArrays.free_blocks[insertIndex] = newFreeBlock;
+					AllArrays.free_count++;
 
-					allocated_blocks[allocatedBlockIndex].size = new_size;
+					AllArrays.allocated_blocks[allocatedBlockIndex].size = new_size;
 
-					uint32 iterator = allocated_blocks[allocatedBlockIndex].va + allocated_blocks[allocatedBlockIndex].size;
+					uint32 iterator = AllArrays.allocated_blocks[allocatedBlockIndex].va + AllArrays.allocated_blocks[allocatedBlockIndex].size;
 
 					for (uint32 i = 0; i < noOfFramesToDellaocate; i++)
 					{
@@ -577,31 +626,37 @@ void *krealloc(void *virtual_address, uint32 new_size)
 						iterator += PAGE_SIZE;
 					}
 				}
-				return (void*)allocated_blocks[allocatedBlockIndex].va;
+				release_spinlock(&(arrayslock));
+				return (void*)AllArrays.allocated_blocks[allocatedBlockIndex].va;
 			}
 
 
 			// next block is allocated (case 7.1)
-			else if(allocatedBlockIndex < block_count - 1 && allocated_blocks[allocatedBlockIndex+1].va == allocated_blocks[allocatedBlockIndex].va + allocated_blocks[allocatedBlockIndex].size)
+			else if(allocatedBlockIndex < AllArrays.block_count - 1 && AllArrays.allocated_blocks[allocatedBlockIndex+1].va == AllArrays.allocated_blocks[allocatedBlockIndex].va + AllArrays.allocated_blocks[allocatedBlockIndex].size)
 			{
 				// next block is allocated and size is equal do nothing(case 7.1.1)
-				if(allocated_blocks[allocatedBlockIndex].size == new_size)
+				if(AllArrays.allocated_blocks[allocatedBlockIndex].size == new_size)
 				{
-					return (void*)allocated_blocks[allocatedBlockIndex].va;
+					release_spinlock(&(arrayslock));
+					return (void*)AllArrays.allocated_blocks[allocatedBlockIndex].va;
 				}
 				// next block is allocated and size is increased (case 7.1.2)
-				if(allocated_blocks[allocatedBlockIndex].size < new_size)
+				if(AllArrays.allocated_blocks[allocatedBlockIndex].size < new_size)
 				{
-					int copySize = allocated_blocks[allocatedBlockIndex].size;
+					int copySize = AllArrays.allocated_blocks[allocatedBlockIndex].size;
+					release_spinlock(&(arrayslock));
 					void* newVA = kmalloc(new_size);
+					acquire_spinlock(&(arrayslock));
 					if(newVA)
 					{
 						memcpy(newVA, virtual_address, copySize);
+						release_spinlock(&(arrayslock));
 						kfree(virtual_address);
 						return newVA;
 					}
 					else
 					{
+						release_spinlock(&(arrayslock));
 						return NULL;
 					}
 				}
@@ -609,19 +664,19 @@ void *krealloc(void *virtual_address, uint32 new_size)
 				// then add a new free block in between after removing the extra space
 				else
 				{
-					int noOfFramesToDellaocate = (allocated_blocks[allocatedBlockIndex].size - new_size) / PAGE_SIZE;
+					int noOfFramesToDellaocate = (AllArrays.allocated_blocks[allocatedBlockIndex].size - new_size) / PAGE_SIZE;
 
 					struct FreeBlock newFreeBlock;
-					newFreeBlock.va = allocated_blocks[allocatedBlockIndex].va + new_size;
-					newFreeBlock.size = allocated_blocks[allocatedBlockIndex].size - new_size;
+					newFreeBlock.va = AllArrays.allocated_blocks[allocatedBlockIndex].va + new_size;
+					newFreeBlock.size = AllArrays.allocated_blocks[allocatedBlockIndex].size - new_size;
 
 					left = 0;
-					right = free_count - 1;
+					right = AllArrays.free_count - 1;
 					while (left <= right)
 					{
 						int mid = left + (right - left) / 2;
 
-						if (free_blocks[mid].va < newFreeBlock.va)
+						if (AllArrays.free_blocks[mid].va < newFreeBlock.va)
 						{
 							left = mid + 1;
 						}
@@ -633,42 +688,43 @@ void *krealloc(void *virtual_address, uint32 new_size)
 
 					int insertIndex = left;
 
-					if (free_count > 0 && insertIndex < free_count)
+					if (AllArrays.free_count > 0 && insertIndex < AllArrays.free_count)
 					{
-						memmove(&free_blocks[insertIndex + 1], &free_blocks[insertIndex],
-								(free_count - insertIndex) * sizeof(struct FreeBlock));
+						memmove(&AllArrays.free_blocks[insertIndex + 1], &AllArrays.free_blocks[insertIndex],
+								(AllArrays.free_count - insertIndex) * sizeof(struct FreeBlock));
 					}
-					free_blocks[insertIndex] = newFreeBlock;
-					free_count++;
+					AllArrays.free_blocks[insertIndex] = newFreeBlock;
+					AllArrays.free_count++;
 
-					allocated_blocks[allocatedBlockIndex].size = new_size;
+					AllArrays.allocated_blocks[allocatedBlockIndex].size = new_size;
 
-					uint32 iterator = allocated_blocks[allocatedBlockIndex].va + allocated_blocks[allocatedBlockIndex].size;
+					uint32 iterator = AllArrays.allocated_blocks[allocatedBlockIndex].va + AllArrays.allocated_blocks[allocatedBlockIndex].size;
 
 					for (uint32 i = 0; i < noOfFramesToDellaocate; i++)
 					{
 						unmap_frame(ptr_page_directory, iterator);
 						iterator += PAGE_SIZE;
 					}
-					return (void*)allocated_blocks[allocatedBlockIndex].va;
+					release_spinlock(&(arrayslock));
+					return (void*)AllArrays.allocated_blocks[allocatedBlockIndex].va;
 				}
 			}
 			// next block is free (case 7.2)
 			else
 			{
 				int left = 0;
-				int right = block_count - 1;
+				int right = AllArrays.block_count - 1;
 				int freeBlockIndex = -1;
 				while (left <= right)
 				{
 					int mid = left + (right - left) / 2;
 
-					if (free_blocks[mid].va == nextBlockVA)
+					if (AllArrays.free_blocks[mid].va == nextBlockVA)
 					{
 						freeBlockIndex = mid;
 						break;
 					}
-					else if (free_blocks[mid].va < nextBlockVA)
+					else if (AllArrays.free_blocks[mid].va < nextBlockVA)
 					{
 						left = mid + 1;
 					}
@@ -678,30 +734,31 @@ void *krealloc(void *virtual_address, uint32 new_size)
 					}
 				}
 				// next block is free and size is equal do nothing (case 7.2.1)
-				if(allocated_blocks[allocatedBlockIndex].size == new_size)
+				if(AllArrays.allocated_blocks[allocatedBlockIndex].size == new_size)
 				{
-					return (void*)allocated_blocks[allocatedBlockIndex].va;
+					release_spinlock(&(arrayslock));
+					return (void*)AllArrays.allocated_blocks[allocatedBlockIndex].va;
 				}
 				// next block is free and size is increased (case 7.2.2)
-				if(allocated_blocks[allocatedBlockIndex].size < new_size)
+				if(AllArrays.allocated_blocks[allocatedBlockIndex].size < new_size)
 				{
-					int noOfFramesToAllocate = (new_size - allocated_blocks[allocatedBlockIndex].size) / PAGE_SIZE;
-					uint32 iterator = allocated_blocks[allocatedBlockIndex].va + allocated_blocks[allocatedBlockIndex].size;
+					int noOfFramesToAllocate = (new_size - AllArrays.allocated_blocks[allocatedBlockIndex].size) / PAGE_SIZE;
+					uint32 iterator = AllArrays.allocated_blocks[allocatedBlockIndex].va + AllArrays.allocated_blocks[allocatedBlockIndex].size;
 					// can fit in
-					if(new_size <= allocated_blocks[allocatedBlockIndex].size + free_blocks[freeBlockIndex].size)
+					if(new_size <= AllArrays.allocated_blocks[allocatedBlockIndex].size + AllArrays.free_blocks[freeBlockIndex].size)
 					{
-						if (free_blocks[freeBlockIndex].size == new_size - allocated_blocks[allocatedBlockIndex].size)
+						if (AllArrays.free_blocks[freeBlockIndex].size == new_size - AllArrays.allocated_blocks[allocatedBlockIndex].size)
 						{
-							memmove(&free_blocks[freeBlockIndex], &free_blocks[freeBlockIndex + 1], (free_count - freeBlockIndex - 1) * sizeof(struct FreeBlock));
-							free_count--;
+							memmove(&AllArrays.free_blocks[freeBlockIndex], &AllArrays.free_blocks[freeBlockIndex + 1], (AllArrays.free_count - freeBlockIndex - 1) * sizeof(struct FreeBlock));
+							AllArrays.free_count--;
 						}
 						else
 						{
-							free_blocks[freeBlockIndex].size -= (new_size - allocated_blocks[allocatedBlockIndex].size);
-							free_blocks[freeBlockIndex].va += (new_size - allocated_blocks[allocatedBlockIndex].size);
+							AllArrays.free_blocks[freeBlockIndex].size -= (new_size - AllArrays.allocated_blocks[allocatedBlockIndex].size);
+							AllArrays.free_blocks[freeBlockIndex].va += (new_size - AllArrays.allocated_blocks[allocatedBlockIndex].size);
 						}
 
-						allocated_blocks[allocatedBlockIndex].size = new_size;
+						AllArrays.allocated_blocks[allocatedBlockIndex].size = new_size;
 
 						for (uint32 i = 0 ; i < noOfFramesToAllocate; i++)
 						{
@@ -710,21 +767,24 @@ void *krealloc(void *virtual_address, uint32 new_size)
 							map_frame(ptr_page_directory, ptr_frame_info, iterator, PERM_WRITEABLE);
 							iterator += PAGE_SIZE;
 						}
-						return (void*)allocated_blocks[allocatedBlockIndex].va;
+						release_spinlock(&(arrayslock));
+						return (void*)AllArrays.allocated_blocks[allocatedBlockIndex].va;
 					}
 					// cannot fit in
 					else
 					{
-						int copySize = allocated_blocks[allocatedBlockIndex].size;
+						int copySize = AllArrays.allocated_blocks[allocatedBlockIndex].size;
 						void* newVA = kmalloc(new_size);
 						if(newVA)
 						{
 							memcpy(newVA, virtual_address, copySize);
+							release_spinlock(&(arrayslock));
 							kfree(virtual_address);
 							return newVA;
 						}
 						else
 						{
+							release_spinlock(&(arrayslock));
 							return NULL;
 						}
 					}
@@ -732,14 +792,14 @@ void *krealloc(void *virtual_address, uint32 new_size)
 				// next block is free and size is decreased (case 7.2.3)
 				else
 				{
-					int noOfFramesToDellaocate = (allocated_blocks[allocatedBlockIndex].size - new_size) / PAGE_SIZE;
+					int noOfFramesToDellaocate = (AllArrays.allocated_blocks[allocatedBlockIndex].size - new_size) / PAGE_SIZE;
 
-					free_blocks[freeBlockIndex].size += (allocated_blocks[allocatedBlockIndex].size - new_size);
-					free_blocks[freeBlockIndex].va -= (allocated_blocks[allocatedBlockIndex].size - new_size);
+					AllArrays.free_blocks[freeBlockIndex].size += (AllArrays.allocated_blocks[allocatedBlockIndex].size - new_size);
+					AllArrays.free_blocks[freeBlockIndex].va -= (AllArrays.allocated_blocks[allocatedBlockIndex].size - new_size);
 
-					allocated_blocks[allocatedBlockIndex].size = new_size;
+					AllArrays.allocated_blocks[allocatedBlockIndex].size = new_size;
 
-					uint32 iterator = allocated_blocks[allocatedBlockIndex].va + allocated_blocks[allocatedBlockIndex].size;
+					uint32 iterator = AllArrays.allocated_blocks[allocatedBlockIndex].va + AllArrays.allocated_blocks[allocatedBlockIndex].size;
 
 
 					for (uint32 i = 0; i < noOfFramesToDellaocate; i++)
@@ -747,11 +807,12 @@ void *krealloc(void *virtual_address, uint32 new_size)
 						unmap_frame(ptr_page_directory, iterator);
 						iterator += PAGE_SIZE;
 					}
-					return (void*)allocated_blocks[allocatedBlockIndex].va;
+					release_spinlock(&(arrayslock));
+					return (void*)AllArrays.allocated_blocks[allocatedBlockIndex].va;
 				}
 			}
 		}
 	}
-
+	release_spinlock(&(arrayslock));
 	return virtual_address;
 }

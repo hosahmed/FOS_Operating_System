@@ -55,7 +55,6 @@ void* malloc(uint32 size)
 	{
 		if (size <= DYN_ALLOC_MAX_BLOCK_SIZE)
 		{
-			sys_allocate_user_mem(myEnv->segment_break, size);
 			return (alloc_block_FF(size));
 		}
 		else
@@ -584,7 +583,6 @@ void sfree(void* virtual_address)
 
 	if (index == -1)
 	{
-		panic("Invalid address: Block not found in allocated_blocks");
 		return;
 	}
 

@@ -149,8 +149,8 @@ void* sys_sbrk(int numOfPages)
 	{
 		if (env->segment_break + numOfPages*PAGE_SIZE > env->hard_limit || !LIST_SIZE(&MemFrameLists.free_frame_list) || LIST_SIZE(&MemFrameLists.free_frame_list) < numOfPages)
 			return (void*)-1;
+		allocate_user_mem(env, env->segment_break, numOfPages*PAGE_SIZE);
 		env->segment_break += numOfPages*PAGE_SIZE;
-
 		return ret;
 	}
 

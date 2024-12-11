@@ -463,13 +463,67 @@ void env_start(void)
 void env_free(struct Env *e)
 {
 	/*REMOVE THIS LINE BEFORE START CODING*/
-	return;
+	//return;
 	/**************************************/
 
 	//[PROJECT'24.MS3] BONUS [EXIT ENV] env_free
 	// your code is here, remove the panic and write your code
-	panic("env_free() is not implemented yet...!!");
+	//panic("env_free() is not implemented yet...!!");
 
+	uint32* ptr_page_table = NULL;
+
+
+	bool empty = 1;
+	uint32 ws_size = LIST_SIZE(&(e->page_WS_list));
+
+	for(int i = 0 ; i < ws_size; i++)
+	{
+		empty = 1;
+
+		struct WorkingSetElement* element = LIST_FIRST(&(e->page_WS_list));
+		LIST_REMOVE(&(e->page_WS_list), element);
+
+		unmap_frame(e->env_page_directory, element->virtual_address);
+		get_page_table(e->env_page_directory, element->virtual_address, &ptr_page_table);
+
+		for (int j = 0; j < 1024; j++) {
+			if (ptr_page_table[j] != 0) {
+				empty = 0;
+				break;
+			}
+		}
+		if (empty == 1) {
+			pd_clear_page_dir_entry(e->env_page_directory, (uint32) ptr_page_table);
+			kfree((void*)ptr_page_table);
+			e->env_page_directory[PDX(ptr_page_table)] = 0;
+		}
+
+		kfree(element);
+	}
+
+	for(uint32 it = USER_HEAP_START; it < USER_HEAP_MAX; it += PAGE_SIZE*1024)
+	{
+		get_page_table(e->env_page_directory, it, &ptr_page_table);
+		kfree(ptr_page_table);
+	}
+
+	kfree(e->kstack);
+
+	kfree(e->env_page_directory);
+
+//	acquire_spinlock(&(AllShares.shareslock));
+//	struct Share* listIT = LIST_FIRST(&(AllShares.shares_list));
+//	uint32 list_size = LIST_SIZE(&(AllShares.shares_list));
+//	for(int i = 0 ; i < list_size; i++)
+//	{
+//		if(listIT->ownerID == e->env_id)
+//		{
+//			kfree(listIT->framesStorage);
+//			kfree(listIT);
+//		}
+//		listIT = LIST_NEXT(listIT);
+//	}
+//	release_spinlock(&(AllShares.shareslock));
 
 	// [9] remove this program from the page file
 	/*(ALREADY DONE for you)*/

@@ -5,13 +5,11 @@
 
 extern void _main(int argc, char **argv);
 
-volatile bool printStats;
 volatile struct Env *myEnv = NULL;
 volatile char *binaryname = "(PROGRAM NAME UNKNOWN)";
 void
 libmain(int argc, char **argv)
 {
-	printStats = 1;
 	int envIndex = sys_getenvindex();
 
 	myEnv = &(envs[envIndex]);
@@ -30,21 +28,21 @@ libmain(int argc, char **argv)
 	// call user main routine
 	_main(argc, argv);
 
-	if (printStats)
+
+
+	//	sys_lock_cons();
+	sys_lock_cons();
 	{
-		sys_lock_cons();
-		{
-			cprintf("**************************************\n");
-			cprintf("Num of PAGE faults = %d, modif = %d\n", myEnv->pageFaultsCounter, myEnv->nModifiedPages);
-			cprintf("# PAGE IN (from disk) = %d, # PAGE OUT (on disk) = %d, # NEW PAGE ADDED (on disk) = %d\n", myEnv->nPageIn, myEnv->nPageOut,myEnv->nNewPageAdded);
-			//cprintf("Num of freeing scarce memory = %d, freeing full working set = %d\n", myEnv->freeingScarceMemCounter, myEnv->freeingFullWSCounter);
-			cprintf("Num of clocks = %d\n", myEnv->nClocks);
-			cprintf("**************************************\n");
-		}
-		sys_unlock_cons();
+		cprintf("**************************************\n");
+		cprintf("Num of PAGE faults = %d, modif = %d\n", myEnv->pageFaultsCounter, myEnv->nModifiedPages);
+		cprintf("# PAGE IN (from disk) = %d, # PAGE OUT (on disk) = %d, # NEW PAGE ADDED (on disk) = %d\n", myEnv->nPageIn, myEnv->nPageOut,myEnv->nNewPageAdded);
+		//cprintf("Num of freeing scarce memory = %d, freeing full working set = %d\n", myEnv->freeingScarceMemCounter, myEnv->freeingFullWSCounter);
+		cprintf("Num of clocks = %d\n", myEnv->nClocks);
+		cprintf("**************************************\n");
 	}
+	sys_unlock_cons();
+//	sys_unlock_cons();
 
 	// exit gracefully
 	exit();
 }
-

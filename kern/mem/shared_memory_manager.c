@@ -42,13 +42,31 @@ int getSizeOfSharedObject(int32 ownerID, char* shareName)
 	// RETURN:
 	//	a) If found, return size of shared object
 	//	b) Else, return E_SHARED_MEM_NOT_EXISTS
-	//
+	if(!holding_spinlock(&AllShares.shareslock))
+	{
+		acquire_spinlock(&(AllShares.shareslock));
+	}
 	struct Share* ptr_share = get_share(ownerID, shareName);
 	if (ptr_share == NULL)
+	{
+		if(holding_spinlock(&AllShares.shareslock))
+		{
+			release_spinlock(&(AllShares.shareslock));
+		}
 		return E_SHARED_MEM_NOT_EXISTS;
+	}
 	else
+	{
+		if(holding_spinlock(&AllShares.shareslock))
+		{
+			release_spinlock(&(AllShares.shareslock));
+		}
 		return ptr_share->size;
-
+	}
+	if(holding_spinlock(&AllShares.shareslock))
+	{
+		release_spinlock(&(AllShares.shareslock));
+	}
 	return 0;
 }
 
@@ -98,13 +116,10 @@ struct Share* create_share(int32 ownerID, char* shareName, uint32 size, uint8 is
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
 	//panic("create_share is not implemented yet");
 
-
-
 	//need to be review
 	uint32 RoundUpsize= ROUNDUP(size, PAGE_SIZE);
 
 	struct Share* sharedObject = kmalloc(sizeof(struct Share));
-
 	if(sharedObject== NULL)
 	{
 		return NULL;
@@ -129,7 +144,6 @@ struct Share* create_share(int32 ownerID, char* shareName, uint32 size, uint8 is
 	sharedObject->references = 1;
 	sharedObject->size = size;
 
-
 	return sharedObject;
 
 }
@@ -149,19 +163,14 @@ struct Share* get_share(int32 ownerID, char* name)
 
 	// check if the time of this code consider long or smoll
 	// may need lock in this func bec of search at the time of deleting
-	acquire_spinlock(&(AllShares.shareslock));
 	struct Share* sharedObjectInList;
 	LIST_FOREACH(sharedObjectInList,&(AllShares.shares_list))
 	{
 		if(sharedObjectInList->ownerID == ownerID && strcmp(sharedObjectInList->name,name)==0 && strlen(sharedObjectInList->name) == strlen(name))
 		{
-			release_spinlock(&(AllShares.shareslock));
 			return sharedObjectInList;
 		}
 	}
-
-	release_spinlock(&(AllShares.shareslock));
-
 	return NULL;
 }
 
@@ -175,29 +184,35 @@ int createSharedObject(int32 ownerID, char* shareName, uint32 size, uint8 isWrit
 	//panic("createSharedObject is not implemented yet");
 	//Your Code is Here...
 
+
+
 	size = ROUNDUP(size, PAGE_SIZE);
 	struct Env* myenv = get_cpu_proc();
 
+	acquire_spinlock(&(AllShares.shareslock));
+
 	if(get_share(ownerID,shareName)!=NULL)
 	{
+
+		release_spinlock(&(AllShares.shareslock));
 		return E_SHARED_MEM_EXISTS;
 	}
 
 	if(myenv->counterForSharedObj == 100)
 	{
+
+		release_spinlock(&(AllShares.shareslock));
 		return E_NO_SHARE;
 	}
+
 
 	struct Share* SharedObj = create_share(ownerID,shareName,size,isWritable);
 
 	if(SharedObj== NULL)
 	{
+		release_spinlock(&(AllShares.shareslock));
 		return E_NO_SHARE;
 	}
-
-	acquire_spinlock(&(AllShares.shareslock));
-	LIST_INSERT_TAIL(&(AllShares.shares_list),SharedObj);
-	release_spinlock(&(AllShares.shareslock));
 
 	uint32 noOfPagesToAllocate = size/PAGE_SIZE;
 
@@ -213,6 +228,9 @@ int createSharedObject(int32 ownerID, char* shareName, uint32 size, uint8 isWrit
 	}
 	myenv->counterForSharedObj++;
 
+	LIST_INSERT_TAIL(&(AllShares.shares_list),SharedObj);
+
+	release_spinlock(&(AllShares.shareslock));
 	return SharedObj->ID;
 
 }

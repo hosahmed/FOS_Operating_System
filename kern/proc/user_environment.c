@@ -476,6 +476,11 @@ void env_free(struct Env *e)
 	bool empty = 1;
 	uint32 ws_size = LIST_SIZE(&(e->page_WS_list));
 
+	for(uint32 i = USER_HEAP_START ; i < USER_HEAP_MAX; i += PAGE_SIZE)
+	{
+		unmap_frame(e->env_page_directory, i);
+	}
+
 	for(int i = 0 ; i < ws_size; i++)
 	{
 		empty = 1;
@@ -511,19 +516,19 @@ void env_free(struct Env *e)
 
 	kfree(e->env_page_directory);
 
-//	acquire_spinlock(&(AllShares.shareslock));
-//	struct Share* listIT = LIST_FIRST(&(AllShares.shares_list));
-//	uint32 list_size = LIST_SIZE(&(AllShares.shares_list));
-//	for(int i = 0 ; i < list_size; i++)
-//	{
-//		if(listIT->ownerID == e->env_id)
-//		{
-//			kfree(listIT->framesStorage);
-//			kfree(listIT);
-//		}
-//		listIT = LIST_NEXT(listIT);
-//	}
-//	release_spinlock(&(AllShares.shareslock));
+	acquire_spinlock(&(AllShares.shareslock));
+	struct Share* listIT = LIST_FIRST(&(AllShares.shares_list));
+	uint32 list_size = LIST_SIZE(&(AllShares.shares_list));
+	for(int i = 0 ; i < list_size; i++)
+	{
+		if(listIT->ownerID == e->env_id)
+		{
+			kfree(listIT->framesStorage);
+			kfree(listIT);
+		}
+		listIT = LIST_NEXT(listIT);
+	}
+	release_spinlock(&(AllShares.shareslock));
 
 	// [9] remove this program from the page file
 	/*(ALREADY DONE for you)*/
@@ -534,6 +539,8 @@ void env_free(struct Env *e)
 	/*(ALREADY DONE for you)*/
 	free_environment(e); /*(ALREADY DONE for you)*/ // (frees the environment (returns it back to the free environment list))
 	/*========================*/
+
+	cprintf("\nstart = %x, segment = %x\n", start, segmentBreak);
 }
 
 //============================

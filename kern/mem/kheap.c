@@ -16,15 +16,13 @@ struct FreeBlock {
     uint32 size;
 };
 
-struct spinlock arrayslock; //Use it to protect the arrays in the kernel
-
 struct
 {
 	struct PageBlock allocated_blocks[NUM_OF_KHEAP_PAGES];
 	struct FreeBlock free_blocks[NUM_OF_KHEAP_PAGES/2];
 	uint32 block_count;
 	uint32 free_count;
-
+	struct spinlock arrayslock; //Use it to protect the arrays in the kernel
 } AllArrays;
 
 //////////////////////////////////////////////////////
@@ -59,7 +57,7 @@ int initialize_kheap_dynamic_allocator(uint32 daStart, uint32 initSizeToAllocate
 		iterator += 4096;
 	}
 
-	init_spinlock(&(arrayslock), "kern_lock");
+	init_spinlock(&(AllArrays.arrayslock), "kern_lock");
 	initialize_dynamic_allocator(start, initSizeToAllocate);
 	return 0;
 }
@@ -112,9 +110,9 @@ void* kmalloc(unsigned int size)
 	//TODO: [PROJECT'24.MS2 - #03] [1] KERNEL HEAP - kmalloc
 	// Write your code here, remove the panic and write your code
 	// use "isKHeapPlacementStrategyFIRSTFIT() ..." functions to check the current strategy
-	if(!holding_spinlock(&arrayslock))
+	if(!holding_spinlock(&AllArrays.arrayslock))
 	{
-		acquire_spinlock(&(arrayslock));
+		acquire_spinlock(&(AllArrays.arrayslock));
 	}
 
 	if (isKHeapPlacementStrategyFIRSTFIT())
@@ -122,9 +120,9 @@ void* kmalloc(unsigned int size)
         if (size <= DYN_ALLOC_MAX_BLOCK_SIZE)
         {
         	void* va = alloc_block_FF(size);
-        	if(holding_spinlock(&arrayslock))
+        	if(holding_spinlock(&AllArrays.arrayslock))
 			{
-				release_spinlock(&(arrayslock));
+				release_spinlock(&(AllArrays.arrayslock));
 			}
         	return va;
         }
@@ -163,17 +161,17 @@ void* kmalloc(unsigned int size)
                         allocationAddress += PAGE_SIZE;
                     }
                     void* va = (void*)(AllArrays.allocated_blocks[0].va);
-                    if(holding_spinlock(&arrayslock))
+                    if(holding_spinlock(&AllArrays.arrayslock))
 					{
-						release_spinlock(&(arrayslock));
+						release_spinlock(&(AllArrays.arrayslock));
 					}
                     return va;
                 }
                 else
                 {
-                	if(holding_spinlock(&arrayslock))
+                	if(holding_spinlock(&AllArrays.arrayslock))
 					{
-						release_spinlock(&(arrayslock));
+						release_spinlock(&(AllArrays.arrayslock));
 					}
                     return NULL;
                 }
@@ -203,9 +201,9 @@ void* kmalloc(unsigned int size)
 
             if (!canAllocate)
             {
-            	if(holding_spinlock(&arrayslock))
+            	if(holding_spinlock(&AllArrays.arrayslock))
             	{
-            		release_spinlock(&(arrayslock));
+            		release_spinlock(&(AllArrays.arrayslock));
             	}
             	return NULL;
             }
@@ -241,16 +239,16 @@ void* kmalloc(unsigned int size)
                 allocationAddress += PAGE_SIZE;
             }
             void* va = (void*)(allocationAddress - (PAGE_SIZE * noOfPagesToAllocate));
-            if(holding_spinlock(&arrayslock))
+            if(holding_spinlock(&AllArrays.arrayslock))
 			{
-				release_spinlock(&(arrayslock));
+				release_spinlock(&(AllArrays.arrayslock));
 			}
             return va;
         }
     }
-	if(holding_spinlock(&arrayslock))
+	if(holding_spinlock(&AllArrays.arrayslock))
 	{
-		release_spinlock(&(arrayslock));
+		release_spinlock(&(AllArrays.arrayslock));
 	}
     return NULL;
 }
@@ -259,18 +257,18 @@ void kfree(void* virtual_address)
 {
 	//TODO: [PROJECT'24.MS2 - #04] [1] KERNEL HEAP - kfree
 	// Write your code here, remove the panic and write your code
-	if(!holding_spinlock(&arrayslock))
+	if(!holding_spinlock(&AllArrays.arrayslock))
 	{
-		acquire_spinlock(&(arrayslock));
+		acquire_spinlock(&(AllArrays.arrayslock));
 	}
     uint32 address = (uint32)virtual_address;
 
     if (address > start && address < hardLimit)
     {
         free_block(virtual_address);
-        if(holding_spinlock(&arrayslock))
+        if(holding_spinlock(&AllArrays.arrayslock))
 		{
-			release_spinlock(&(arrayslock));
+			release_spinlock(&(AllArrays.arrayslock));
 		}
         return;
     }
@@ -310,9 +308,9 @@ void kfree(void* virtual_address)
 
         if (index == -1)
         {
-        	if(holding_spinlock(&arrayslock))
+        	if(holding_spinlock(&AllArrays.arrayslock))
 			{
-				release_spinlock(&(arrayslock));
+				release_spinlock(&(AllArrays.arrayslock));
 			}
             return;
         }
@@ -380,15 +378,15 @@ void kfree(void* virtual_address)
     }
     else
     {
-    	if(holding_spinlock(&arrayslock))
+    	if(holding_spinlock(&AllArrays.arrayslock))
 		{
-			release_spinlock(&(arrayslock));
+			release_spinlock(&(AllArrays.arrayslock));
 		}
         return;
     }
-    if(holding_spinlock(&arrayslock))
+    if(holding_spinlock(&AllArrays.arrayslock))
 	{
-		release_spinlock(&(arrayslock));
+		release_spinlock(&(AllArrays.arrayslock));
 	}
     //you need to get the size of the given allocation using its address
 	//refer to the project presentation and documentation for details
@@ -462,12 +460,18 @@ void *krealloc(void *virtual_address, uint32 new_size)
 {
 	//TODO: [PROJECT'24.MS2 - BONUS#1] [1] KERNEL HEAP - krealloc
 	// Write your code here, remove the panic and write your code
-	acquire_spinlock(&(arrayslock));
+	if(!holding_spinlock(&AllArrays.arrayslock))
+	{
+		acquire_spinlock(&(AllArrays.arrayslock));
+	}
 	// case 1
 	if(virtual_address == NULL && new_size != 0)
 	{
 		void* va = kmalloc(new_size);
-		release_spinlock(&(arrayslock));
+		if(holding_spinlock(&AllArrays.arrayslock))
+		{
+			release_spinlock(&(AllArrays.arrayslock));
+		}
 		return va;
 	}
 
@@ -475,14 +479,20 @@ void *krealloc(void *virtual_address, uint32 new_size)
 	if(virtual_address != NULL && new_size == 0)
 	{
 		kfree(virtual_address);
-		release_spinlock(&(arrayslock));
+		if(holding_spinlock(&AllArrays.arrayslock))
+		{
+			release_spinlock(&(AllArrays.arrayslock));
+		}
 		return NULL;
 	}
 
 	// case 3
 	if(virtual_address == NULL && new_size == 0)
 	{
-		release_spinlock(&(arrayslock));
+		if(holding_spinlock(&AllArrays.arrayslock))
+		{
+			release_spinlock(&(AllArrays.arrayslock));
+		}
 		return NULL;
 	}
 
@@ -497,12 +507,18 @@ void *krealloc(void *virtual_address, uint32 new_size)
 			if(!is_free_block(virtual_address))
 			{
 				void* va = realloc_block_FF(virtual_address, new_size);
-				release_spinlock(&(arrayslock));
+				if(holding_spinlock(&AllArrays.arrayslock))
+				{
+					release_spinlock(&(AllArrays.arrayslock));
+				}
 				return va;
 			}
 			else
 			{
-				release_spinlock(&(arrayslock));
+				if(holding_spinlock(&AllArrays.arrayslock))
+				{
+					release_spinlock(&(AllArrays.arrayslock));
+				}
 				return NULL;
 			}
 		}
@@ -511,7 +527,10 @@ void *krealloc(void *virtual_address, uint32 new_size)
 		{
 			if(is_free_block(virtual_address))
 			{
-				release_spinlock(&(arrayslock));
+				if(holding_spinlock(&AllArrays.arrayslock))
+				{
+					release_spinlock(&(AllArrays.arrayslock));
+				}
 				return NULL;
 			}
 			void* newVA = kmalloc(new_size);
@@ -519,12 +538,18 @@ void *krealloc(void *virtual_address, uint32 new_size)
 			{
 				memcpy(newVA, virtual_address, get_block_size(virtual_address) - 8);
 				kfree(virtual_address);
-				release_spinlock(&(arrayslock));
+				if(holding_spinlock(&AllArrays.arrayslock))
+				{
+					release_spinlock(&(AllArrays.arrayslock));
+				}
 				return newVA;
 			}
 			else
 			{
-				release_spinlock(&(arrayslock));
+				if(holding_spinlock(&AllArrays.arrayslock))
+				{
+					release_spinlock(&(AllArrays.arrayslock));
+				}
 				return NULL;
 			}
 		}
@@ -541,12 +566,18 @@ void *krealloc(void *virtual_address, uint32 new_size)
 			{
 				memcpy(newVA, virtual_address, new_size);
 				kfree(virtual_address);
-				release_spinlock(&(arrayslock));
+				if(holding_spinlock(&AllArrays.arrayslock))
+				{
+					release_spinlock(&(AllArrays.arrayslock));
+				}
 				return newVA;
 			}
 			else
 			{
-				release_spinlock(&(arrayslock));
+				if(holding_spinlock(&AllArrays.arrayslock))
+				{
+					release_spinlock(&(AllArrays.arrayslock));
+				}
 				return NULL;
 			}
 		}
@@ -557,7 +588,10 @@ void *krealloc(void *virtual_address, uint32 new_size)
 
 			if(new_size > KERNEL_HEAP_MAX - hardLimit - PAGE_SIZE)
 			{
-				release_spinlock(&(arrayslock));
+				if(holding_spinlock(&AllArrays.arrayslock))
+				{
+					release_spinlock(&(AllArrays.arrayslock));
+				}
 				return NULL;
 			}
 
@@ -588,7 +622,10 @@ void *krealloc(void *virtual_address, uint32 new_size)
 
 			if(allocatedBlockIndex == -1)
 			{
-				release_spinlock(&(arrayslock));
+				if(holding_spinlock(&AllArrays.arrayslock))
+				{
+					release_spinlock(&(AllArrays.arrayslock));
+				}
 				return NULL;
 			}
 
@@ -603,12 +640,18 @@ void *krealloc(void *virtual_address, uint32 new_size)
 					{
 						memcpy(newVA, virtual_address, copySize);
 						kfree(virtual_address);
-						release_spinlock(&(arrayslock));
+						if(holding_spinlock(&AllArrays.arrayslock))
+						{
+							release_spinlock(&(AllArrays.arrayslock));
+						}
 						return newVA;
 					}
 					else
 					{
-						release_spinlock(&(arrayslock));
+						if(holding_spinlock(&AllArrays.arrayslock))
+						{
+							release_spinlock(&(AllArrays.arrayslock));
+						}
 						return NULL;
 					}
 				}
@@ -657,7 +700,10 @@ void *krealloc(void *virtual_address, uint32 new_size)
 					}
 				}
 				void* va = (void*)AllArrays.allocated_blocks[allocatedBlockIndex].va;
-				release_spinlock(&(arrayslock));
+				if(holding_spinlock(&AllArrays.arrayslock))
+				{
+					release_spinlock(&(AllArrays.arrayslock));
+				}
 				return va;
 			}
 
@@ -669,7 +715,10 @@ void *krealloc(void *virtual_address, uint32 new_size)
 				if(AllArrays.allocated_blocks[allocatedBlockIndex].size == new_size)
 				{
 					void* va = (void*)AllArrays.allocated_blocks[allocatedBlockIndex].va;
-					release_spinlock(&(arrayslock));
+					if(holding_spinlock(&AllArrays.arrayslock))
+					{
+						release_spinlock(&(AllArrays.arrayslock));
+					}
 					return va;
 				}
 				// next block is allocated and size is increased (case 7.1.2)
@@ -681,12 +730,18 @@ void *krealloc(void *virtual_address, uint32 new_size)
 					{
 						memcpy(newVA, virtual_address, copySize);
 						kfree(virtual_address);
-						release_spinlock(&(arrayslock));
+						if(holding_spinlock(&AllArrays.arrayslock))
+						{
+							release_spinlock(&(AllArrays.arrayslock));
+						}
 						return newVA;
 					}
 					else
 					{
-						release_spinlock(&(arrayslock));
+						if(holding_spinlock(&AllArrays.arrayslock))
+						{
+							release_spinlock(&(AllArrays.arrayslock));
+						}
 						return NULL;
 					}
 				}
@@ -736,7 +791,10 @@ void *krealloc(void *virtual_address, uint32 new_size)
 						iterator += PAGE_SIZE;
 					}
 					void* va = (void*)AllArrays.allocated_blocks[allocatedBlockIndex].va;
-					release_spinlock(&(arrayslock));
+					if(holding_spinlock(&AllArrays.arrayslock))
+					{
+						release_spinlock(&(AllArrays.arrayslock));
+					}
 					return va;
 				}
 			}
@@ -768,7 +826,10 @@ void *krealloc(void *virtual_address, uint32 new_size)
 				if(AllArrays.allocated_blocks[allocatedBlockIndex].size == new_size)
 				{
 					void* va = (void*)AllArrays.allocated_blocks[allocatedBlockIndex].va;
-					release_spinlock(&(arrayslock));
+					if(holding_spinlock(&AllArrays.arrayslock))
+					{
+						release_spinlock(&(AllArrays.arrayslock));
+					}
 					return va;
 				}
 				// next block is free and size is increased (case 7.2.2)
@@ -800,7 +861,10 @@ void *krealloc(void *virtual_address, uint32 new_size)
 							iterator += PAGE_SIZE;
 						}
 						void* va = (void*)AllArrays.allocated_blocks[allocatedBlockIndex].va;
-						release_spinlock(&(arrayslock));
+						if(holding_spinlock(&AllArrays.arrayslock))
+						{
+							release_spinlock(&(AllArrays.arrayslock));
+						}
 						return va;
 					}
 					// cannot fit in
@@ -812,12 +876,18 @@ void *krealloc(void *virtual_address, uint32 new_size)
 						{
 							memcpy(newVA, virtual_address, copySize);
 							kfree(virtual_address);
-							release_spinlock(&(arrayslock));
+							if(holding_spinlock(&AllArrays.arrayslock))
+							{
+								release_spinlock(&(AllArrays.arrayslock));
+							}
 							return newVA;
 						}
 						else
 						{
-							release_spinlock(&(arrayslock));
+							if(holding_spinlock(&AllArrays.arrayslock))
+							{
+								release_spinlock(&(AllArrays.arrayslock));
+							}
 							return NULL;
 						}
 					}
@@ -841,12 +911,18 @@ void *krealloc(void *virtual_address, uint32 new_size)
 						iterator += PAGE_SIZE;
 					}
 					void* va = (void*)AllArrays.allocated_blocks[allocatedBlockIndex].va;
-					release_spinlock(&(arrayslock));
+					if(holding_spinlock(&AllArrays.arrayslock))
+					{
+						release_spinlock(&(AllArrays.arrayslock));
+					}
 					return va;
 				}
 			}
 		}
 	}
-	release_spinlock(&(arrayslock));
+	if(holding_spinlock(&AllArrays.arrayslock))
+	{
+		release_spinlock(&(AllArrays.arrayslock));
+	}
 	return virtual_address;
 }

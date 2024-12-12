@@ -414,7 +414,7 @@ void *realloc_block_FF(void* va, uint32 new_size)
 					}
 					else
 					{
-						return va;
+						return NULL;
 					}
 				}
 				else if(forward_block_size - difference_needed < 16)//case 2(free block size is sufficient but the remaining size can not be used)
@@ -455,7 +455,7 @@ void *realloc_block_FF(void* va, uint32 new_size)
 				}
 				else
 				{
-					return va;
+					return NULL;
 				}
 			}
 		}

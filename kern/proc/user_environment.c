@@ -539,8 +539,6 @@ void env_free(struct Env *e)
 	/*(ALREADY DONE for you)*/
 	free_environment(e); /*(ALREADY DONE for you)*/ // (frees the environment (returns it back to the free environment list))
 	/*========================*/
-
-	cprintf("\nstart = %x, segment = %x\n", start, segmentBreak);
 }
 
 //============================

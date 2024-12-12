@@ -198,12 +198,12 @@ int createSharedObject(int32 ownerID, char* shareName, uint32 size, uint8 isWrit
 		return E_SHARED_MEM_EXISTS;
 	}
 
-	if(myenv->counterForSharedObj == 100)
-	{
-
-		release_spinlock(&(AllShares.shareslock));
-		return E_NO_SHARE;
-	}
+//	if(myenv->counterForSharedObj == 100)
+//	{
+//
+//		release_spinlock(&(AllShares.shareslock));
+//		return E_NO_SHARE;
+//	}
 
 
 	struct Share* SharedObj = create_share(ownerID,shareName,size,isWritable);

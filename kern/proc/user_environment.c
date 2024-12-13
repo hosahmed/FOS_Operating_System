@@ -470,16 +470,14 @@ void env_free(struct Env *e)
 	// your code is here, remove the panic and write your code
 	//panic("env_free() is not implemented yet...!!");
 
-	uint32* ptr_page_table = NULL;
 
+
+	uint32* ptr_page_table = NULL;
 
 	bool empty = 1;
 	uint32 ws_size = LIST_SIZE(&(e->page_WS_list));
 
-	for(uint32 i = USER_HEAP_START ; i < USER_HEAP_MAX; i += PAGE_SIZE)
-	{
-		unmap_frame(e->env_page_directory, i);
-	}
+	// free all ws elements and the list and the va's with their page tables
 
 	for(int i = 0 ; i < ws_size; i++)
 	{
@@ -506,15 +504,33 @@ void env_free(struct Env *e)
 		kfree(element);
 	}
 
+	// free all the user heap pages and tables
+
+	for(uint32 it = USER_HEAP_START; it < USER_HEAP_MAX; it += PAGE_SIZE)
+	{
+		unmap_frame(e->env_page_directory, it);
+	}
+
 	for(uint32 it = USER_HEAP_START; it < USER_HEAP_MAX; it += PAGE_SIZE*1024)
 	{
 		get_page_table(e->env_page_directory, it, &ptr_page_table);
+		pd_clear_page_dir_entry(e->env_page_directory, (uint32) ptr_page_table);
 		kfree(ptr_page_table);
+		e->env_page_directory[PDX(ptr_page_table)] = 0;
+	}
+
+	// free the user kernel stack and the page directory ptr
+
+	for(uint32 it = USTACKBOTTOM; it < USTACKTOP; it += PAGE_SIZE)
+	{
+		unmap_frame(e->env_page_directory, it);
 	}
 
 	kfree(e->kstack);
 
 	kfree(e->env_page_directory);
+
+	// free all the created semaphores and shared objects
 
 	acquire_spinlock(&(AllShares.shareslock));
 	struct Share* listIT = LIST_FIRST(&(AllShares.shares_list));

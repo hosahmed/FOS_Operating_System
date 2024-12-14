@@ -470,8 +470,6 @@ void env_free(struct Env *e)
 	// your code is here, remove the panic and write your code
 	//panic("env_free() is not implemented yet...!!");
 
-
-
 	uint32* ptr_page_table = NULL;
 
 	bool empty = 1;
@@ -526,7 +524,7 @@ void env_free(struct Env *e)
 		unmap_frame(e->env_page_directory, it);
 	}
 
-	kfree(e->kstack);
+	delete_user_kern_stack(e);
 
 	kfree(e->env_page_directory);
 
@@ -539,8 +537,12 @@ void env_free(struct Env *e)
 	{
 		if(listIT->ownerID == e->env_id)
 		{
-			kfree(listIT->framesStorage);
-			kfree(listIT);
+			struct Share* tmp = listIT;
+			listIT = LIST_NEXT(listIT);
+			LIST_REMOVE(&(AllShares.shares_list), tmp);
+			kfree(tmp->framesStorage);
+			kfree(tmp);
+			continue;
 		}
 		listIT = LIST_NEXT(listIT);
 	}
@@ -977,8 +979,8 @@ void delete_user_kern_stack(struct Env* e)
 #if USE_KHEAP
 	//[PROJECT'24.MS3] BONUS
 	// Write your code here, remove the panic and write your code
-	panic("delete_user_kern_stack() is not implemented yet...!!");
-
+	//panic("delete_user_kern_stack() is not implemented yet...!!");
+	kfree(e->kstack);
 	//Delete the allocated space for the user kernel stack of this process "e"
 	//remember to delete the bottom GUARD PAGE (i.e. not mapped)
 #else

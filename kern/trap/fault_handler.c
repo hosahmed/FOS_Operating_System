@@ -294,7 +294,7 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 		//TODO: [PROJECT'24.MS3 - #01] [2] FAULT HANDLER II - Replacement
 		// Write your code here, remove the panic and write your code
 		//panic("page_fault_handler() Replacement is not implemented yet...!!");
-
+		//env_page_ws_print(faulted_env);
 		if(isPageReplacmentAlgorithmNchanceCLOCK())
 		{
 			bool normal = 0;
@@ -309,66 +309,165 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 				n = -page_WS_max_sweeps;
 			}
 
-			while(1)
+			int max = -2;
+			struct WorkingSetElement* it = faulted_env->page_last_WS_element;
+			struct WorkingSetElement* itEnd = faulted_env->page_last_WS_element;
+			for(int i = 0 ; i < faulted_env->page_WS_max_size; i++)
 			{
-				uint32 page_permissions = pt_get_page_permissions(faulted_env->env_page_directory, faulted_env->page_last_WS_element->virtual_address);
-				// if used = 1
+				uint32 page_permissions = pt_get_page_permissions(faulted_env->env_page_directory, it->virtual_address);
+				uint32 victim_permissions = pt_get_page_permissions(faulted_env->env_page_directory, itEnd->virtual_address);
 				if(page_permissions & PERM_USED)
 				{
-					faulted_env->page_last_WS_element->sweeps_counter = 0;
-					pt_set_page_permissions(faulted_env->env_page_directory, faulted_env->page_last_WS_element->virtual_address, 0, PERM_USED);
+					if(max < -1 || (!(page_permissions & PERM_MODIFIED) && (victim_permissions & PERM_MODIFIED) && (victim_permissions & PERM_USED) && !normal))
+					{
+						itEnd = it;
+						max = -1;
+					}
 				}
-				// if used = 0
 				else
 				{
 					bool condition;
 					faulted_env->page_last_WS_element->sweeps_counter++;
 					if(normal)
 					{
-						condition = faulted_env->page_last_WS_element->sweeps_counter == n;
+						condition = (int)it->sweeps_counter > (int)max;
 					}
 					else
 					{
-						condition = (faulted_env->page_last_WS_element->sweeps_counter == n && !(page_permissions & PERM_MODIFIED)) || (faulted_env->page_last_WS_element->sweeps_counter == n+1 && (page_permissions & PERM_MODIFIED));
+						condition = ((int)it->sweeps_counter > max && !(page_permissions & PERM_MODIFIED)) || ((int)it->sweeps_counter > max+1 && (page_permissions & PERM_MODIFIED));
 					}
 					if(condition)
 					{
-						faulted_env->page_last_WS_element->sweeps_counter = 0;
-						uint32* ptr_page_table = NULL;
-						get_page_table(faulted_env->env_page_directory, faulted_env->page_last_WS_element->virtual_address, &ptr_page_table);
-						struct FrameInfo *ptr_frame_info = get_frame_info(faulted_env->env_page_directory, faulted_env->page_last_WS_element->virtual_address, &ptr_page_table);
-						if(page_permissions & PERM_MODIFIED)
-						{
-							pf_update_env_page(faulted_env, faulted_env->page_last_WS_element->virtual_address, ptr_frame_info);
-						}
-						map_frame(faulted_env->env_page_directory, ptr_frame_info, fault_va, PERM_USER | PERM_WRITEABLE | PERM_USED);
-						unmap_frame(faulted_env->env_page_directory, faulted_env->page_last_WS_element->virtual_address);
-						faulted_env->page_last_WS_element->virtual_address = fault_va;
-
-						// read page from page file and write it to the frame
-						pf_read_env_page(faulted_env, (void*)fault_va);
-
-						break;
+						max = it->sweeps_counter;
+						itEnd = it;
 					}
 				}
-				if(LIST_LAST(&(faulted_env->page_WS_list)) == faulted_env->page_last_WS_element)
+				if(LIST_LAST(&(faulted_env->page_WS_list)) == it)
 				{
-					faulted_env->page_last_WS_element = LIST_FIRST(&(faulted_env->page_WS_list));
+					it = LIST_FIRST(&(faulted_env->page_WS_list));
 				}
 				else
 				{
-					faulted_env->page_last_WS_element = LIST_NEXT(faulted_env->page_last_WS_element);
+					it = LIST_NEXT(it);
 				}
-			} // end of while
-			if(LIST_LAST(&(faulted_env->page_WS_list)) == faulted_env->page_last_WS_element)
+			}
+			uint32 page_permissions = pt_get_page_permissions(faulted_env->env_page_directory, itEnd->virtual_address);
+
+			int diff;
+			if(!normal)
+			{
+				diff = n - max + 1;
+			}
+			else
+			{
+				diff = n - max;
+			}
+
+			itEnd->sweeps_counter = 0;
+			uint32* ptr_page_table = NULL;
+			get_page_table(faulted_env->env_page_directory, itEnd->virtual_address, &ptr_page_table);
+			struct FrameInfo *ptr_frame_info = get_frame_info(faulted_env->env_page_directory, itEnd->virtual_address, &ptr_page_table);
+			if(page_permissions & PERM_MODIFIED)
+			{
+				pf_update_env_page(faulted_env, itEnd->virtual_address, ptr_frame_info);
+			}
+			map_frame(faulted_env->env_page_directory, ptr_frame_info, fault_va, PERM_USER | PERM_WRITEABLE | PERM_USED);
+			unmap_frame(faulted_env->env_page_directory, itEnd->virtual_address);
+			itEnd->virtual_address = fault_va;
+
+			pf_read_env_page(faulted_env, (void*)fault_va);
+
+			it = faulted_env->page_last_WS_element;
+
+			while(it != itEnd)
+			{
+				uint32 page_permissions = pt_get_page_permissions(faulted_env->env_page_directory, it->virtual_address);
+				if(page_permissions & PERM_USED)
+				{
+					pt_set_page_permissions(faulted_env->env_page_directory, it->virtual_address, 0 , PERM_USED);
+					it->sweeps_counter = diff - 1;
+					if((page_permissions & PERM_MODIFIED) && !normal)
+					{
+						it->sweeps_counter++;
+						it->sweeps_counter %= n;
+					}
+				}
+				else
+				{
+					it->sweeps_counter = (it->sweeps_counter + diff) % n;
+					if((page_permissions & PERM_MODIFIED) && !normal)
+					{
+						it->sweeps_counter++;
+						it->sweeps_counter %= n;
+					}
+				}
+
+				if(LIST_LAST(&(faulted_env->page_WS_list)) == it)
+				{
+					it = LIST_FIRST(&(faulted_env->page_WS_list));
+				}
+				else
+				{
+					it = LIST_NEXT(it);
+				}
+			}
+
+			if(LIST_LAST(&(faulted_env->page_WS_list)) == it)
+			{
+				it = LIST_FIRST(&(faulted_env->page_WS_list));
+			}
+			else
+			{
+				it = LIST_NEXT(it);
+			}
+
+			// update the ws elements that we looped on them -1 times
+			uint32 victim_permissions = pt_get_page_permissions(faulted_env->env_page_directory, itEnd->virtual_address);
+			if(diff > 1)
+			{
+				while(it != faulted_env->page_last_WS_element)
+				{
+					uint32 page_permissions = pt_get_page_permissions(faulted_env->env_page_directory, it->virtual_address);
+					if(page_permissions & PERM_USED)
+					{
+						pt_set_page_permissions(faulted_env->env_page_directory, it->virtual_address, 0 , PERM_USED);
+						it->sweeps_counter = diff - 2;
+						if(!normal && (victim_permissions & PERM_MODIFIED))
+						{
+							it->sweeps_counter++;
+							it->sweeps_counter %= n;
+						}
+					}
+					else
+					{
+						it->sweeps_counter = (it->sweeps_counter + diff - 1) % n;
+						if(!normal && (victim_permissions & PERM_MODIFIED))
+						{
+							it->sweeps_counter++;
+							it->sweeps_counter %= n;
+						}
+					}
+					if(LIST_LAST(&(faulted_env->page_WS_list)) == it)
+					{
+						it = LIST_FIRST(&(faulted_env->page_WS_list));
+					}
+					else
+					{
+						it = LIST_NEXT(it);
+					}
+				}
+			}
+
+			if(LIST_LAST(&(faulted_env->page_WS_list)) == itEnd)
 			{
 				faulted_env->page_last_WS_element = LIST_FIRST(&(faulted_env->page_WS_list));
 			}
 			else
 			{
-				faulted_env->page_last_WS_element = LIST_NEXT(faulted_env->page_last_WS_element);
+				faulted_env->page_last_WS_element = LIST_NEXT(itEnd);
 			}
 		}
+		//env_page_ws_print(faulted_env);
 	}
 }
 

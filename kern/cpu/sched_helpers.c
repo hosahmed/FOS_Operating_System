@@ -707,16 +707,16 @@ void env_set_priority(int envID, int priority)
 	//Get the process of the given ID
 	struct Env* proc ;
 	envid2env(envID, &proc, 0);
+	acquire_spinlock(&(ProcessQueues.qlock));
 	proc->priority = priority;
 
-	acquire_spinlock(&ProcessQueues.qlock);
 	if(proc->env_status == ENV_READY){
 		sched_remove_ready(proc);
 		sched_insert_ready(proc);
 	}
-	release_spinlock(&ProcessQueues.qlock);
 
 	cprintf("\nPRIORITY SETTED TO %d SUCCESSFULLY!!\n", proc->priority);
+	release_spinlock(&(ProcessQueues.qlock));
 	//Your code is here
 	//Comment the following line
 	//panic("Not implemented yet");

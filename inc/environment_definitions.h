@@ -181,6 +181,7 @@ struct Env {
 	//2020
 	uint32 nPageIn, nPageOut, nNewPageAdded;
 	uint32 nClocks ;
+	uint32 ticks ; // no of quantams in which the process didn't work (to compare with starvThresh)
 
 };
 

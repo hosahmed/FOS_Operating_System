@@ -353,7 +353,7 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 			}
 			uint32 page_permissions = pt_get_page_permissions(faulted_env->env_page_directory, itEnd->virtual_address);
 
-			int diff;
+			uint32 diff;
 			if(!normal)
 			{
 				diff = n - max + 1;

@@ -466,7 +466,7 @@ void env_free(struct Env *e)
 	//return;
 	/**************************************/
 
-	//[PROJECT'24.MS3] BONUS [EXIT ENV] env_free
+	//TODO [PROJECT'24.MS3 - BONUS#01] [EXIT ENV V1] - env_free
 	// your code is here, remove the panic and write your code
 	//panic("env_free() is not implemented yet...!!");
 
@@ -528,8 +528,9 @@ void env_free(struct Env *e)
 
 	kfree(e->env_page_directory);
 
-	// free all the created semaphores and shared objects
+	//TODO [PROJECT'24.MS3 - BONUS#02] [EXIT ENV V2] - env_free
 
+	// free all the created semaphores and shared objects
 	acquire_spinlock(&(AllShares.shareslock));
 	struct Share* listIT = LIST_FIRST(&(AllShares.shares_list));
 	uint32 list_size = LIST_SIZE(&(AllShares.shares_list));
@@ -548,6 +549,47 @@ void env_free(struct Env *e)
 	}
 	release_spinlock(&(AllShares.shareslock));
 
+	// free all child envs (if any)
+
+//	uint32 newSize = LIST_SIZE(&ProcessQueues.env_new_queue);
+//	uint32 exitSize = LIST_SIZE(&ProcessQueues.env_exit_queue);
+//
+//	for(uint32 i = 0 ; i < newSize; i++)
+//	{
+//		struct Env* cur = dequeue(&ProcessQueues.env_new_queue);
+//		enqueue(&ProcessQueues.env_new_queue, cur);
+//		if(cur->env_parent_id == e->env_id)
+//		{
+//			if(holding_spinlock(&(ProcessQueues.qlock)))
+//			{
+//				release_spinlock(&(ProcessQueues.qlock));
+//			}
+//			sched_kill_env(cur->env_id);
+//			if(!holding_spinlock(&(ProcessQueues.qlock)))
+//			{
+//				acquire_spinlock(&(ProcessQueues.qlock));
+//			}
+//		}
+//	}
+//
+//	for(uint32 i = 0 ; i < exitSize; i++)
+//	{
+//		struct Env* cur = dequeue(&ProcessQueues.env_exit_queue);
+//		enqueue(&ProcessQueues.env_exit_queue, cur);
+//		if(cur->env_parent_id == e->env_id)
+//		{
+//			if(holding_spinlock(&(ProcessQueues.qlock)))
+//			{
+//				release_spinlock(&(ProcessQueues.qlock));
+//			}
+//			sched_kill_env(cur->env_id);
+//			if(!holding_spinlock(&(ProcessQueues.qlock)))
+//			{
+//				acquire_spinlock(&(ProcessQueues.qlock));
+//			}
+//		}
+//	}
+
 	// [9] remove this program from the page file
 	/*(ALREADY DONE for you)*/
 	pf_free_env(e); /*(ALREADY DONE for you)*/ // (removes all of the program pages from the page file)
@@ -557,6 +599,14 @@ void env_free(struct Env *e)
 	/*(ALREADY DONE for you)*/
 	free_environment(e); /*(ALREADY DONE for you)*/ // (frees the environment (returns it back to the free environment list))
 	/*========================*/
+
+//	if(holding_spinlock(&(ProcessQueues.qlock)))
+//	{
+//		release_spinlock(&(ProcessQueues.qlock));
+//	}
+
+	cprintf("\nKHEAP block allocator start = %x\n", start);
+	cprintf("\nKHEAP block allocator segment break = %x\n", segmentBreak);
 }
 
 //============================

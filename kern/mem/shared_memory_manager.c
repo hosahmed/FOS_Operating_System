@@ -186,12 +186,17 @@ int createSharedObject(int32 ownerID, char* shareName, uint32 size, uint8 isWrit
 	size = ROUNDUP(size, PAGE_SIZE);
 	struct Env* myenv = get_cpu_proc();
 
-	acquire_spinlock(&(AllShares.shareslock));
+	if(!holding_spinlock(&AllShares.shareslock))
+	{
+		acquire_spinlock(&(AllShares.shareslock));
+	}
 
 	if(get_share(ownerID,shareName) != NULL)
 	{
-
-		release_spinlock(&(AllShares.shareslock));
+		if(holding_spinlock(&AllShares.shareslock))
+		{
+			release_spinlock(&(AllShares.shareslock));
+		}
 		return E_SHARED_MEM_EXISTS;
 	}
 
@@ -199,7 +204,10 @@ int createSharedObject(int32 ownerID, char* shareName, uint32 size, uint8 isWrit
 
 	if(SharedObj == NULL)
 	{
-		release_spinlock(&(AllShares.shareslock));
+		if(holding_spinlock(&AllShares.shareslock))
+		{
+			release_spinlock(&(AllShares.shareslock));
+		}
 		return E_NO_SHARE;
 	}
 
@@ -218,7 +226,10 @@ int createSharedObject(int32 ownerID, char* shareName, uint32 size, uint8 isWrit
 
 	LIST_INSERT_TAIL(&(AllShares.shares_list),SharedObj);
 
-	release_spinlock(&(AllShares.shareslock));
+	if(holding_spinlock(&AllShares.shareslock))
+	{
+		release_spinlock(&(AllShares.shareslock));
+	}
 	return SharedObj->ID;
 
 }
@@ -237,13 +248,19 @@ int getSharedObject(int32 ownerID, char* shareName, void* virtual_address)
 
 	struct Env* myenv = get_cpu_proc();//The calling environment
 
-	acquire_spinlock(&(AllShares.shareslock));
+	if(!holding_spinlock(&AllShares.shareslock))
+	{
+		acquire_spinlock(&(AllShares.shareslock));
+	}
 
 	struct Share* SharedObj= get_share(ownerID,shareName);
 
 	if(SharedObj==NULL)
 	{
-		release_spinlock(&(AllShares.shareslock));
+		if(holding_spinlock(&AllShares.shareslock))
+		{
+			release_spinlock(&(AllShares.shareslock));
+		}
 		return E_SHARED_MEM_NOT_EXISTS;
 	}
 	SharedObj->references += 1;
@@ -274,7 +291,10 @@ int getSharedObject(int32 ownerID, char* shareName, void* virtual_address)
 
 		virtual_address+=PAGE_SIZE;
 	}
-	release_spinlock(&(AllShares.shareslock));
+	if(holding_spinlock(&AllShares.shareslock))
+	{
+		release_spinlock(&(AllShares.shareslock));
+	}
 	return SharedObj->ID;
 
 }
@@ -312,7 +332,11 @@ int freeSharedObject(int32 sharedObjectID, void *startVA)
 	struct Env* current_env = get_cpu_proc();
 	struct Share* sharedObjectInList,*sharedObjectToFree;
 
-	acquire_spinlock(&(AllShares.shareslock));
+	if(!holding_spinlock(&AllShares.shareslock))
+	{
+		acquire_spinlock(&(AllShares.shareslock));
+	}
+
 	LIST_FOREACH(sharedObjectInList,&(AllShares.shares_list))
 	{
 		if(sharedObjectInList->ID == sharedObjectID)
@@ -377,6 +401,11 @@ int freeSharedObject(int32 sharedObjectID, void *startVA)
 	{
 		free_share(sharedObjectToFree);
 	}
-	release_spinlock(&(AllShares.shareslock));
+
+	if(holding_spinlock(&AllShares.shareslock))
+	{
+		release_spinlock(&(AllShares.shareslock));
+	}
+
 	return 0;
 }

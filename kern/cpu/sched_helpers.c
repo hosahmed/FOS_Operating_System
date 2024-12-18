@@ -557,7 +557,10 @@ void sched_run_all()
 //=================================================
 void sched_kill_all()
 {
-	acquire_spinlock(&(ProcessQueues.qlock)); 	//CS on Qs
+	if(!holding_spinlock(&ProcessQueues.qlock))
+	{
+		acquire_spinlock(&(ProcessQueues.qlock)); //CS on Qs
+	}
 	struct Env* ptr_env ;
 	if (!LIST_EMPTY(&ProcessQueues.env_new_queue))
 	{
@@ -627,7 +630,10 @@ void sched_kill_all()
 		/*2024: replaced by sched() to apply context_switch*/
 		sched();
 	}
-	release_spinlock(&(ProcessQueues.qlock)); 	//CS on Qs
+	if(holding_spinlock(&(ProcessQueues.qlock)))
+	{
+		release_spinlock(&(ProcessQueues.qlock)); //CS on Qs
+	}
 	//get into the command prompt since there're no env to return back to it
 	//fos_scheduler(); //2024: commented
 	get_into_prompt();

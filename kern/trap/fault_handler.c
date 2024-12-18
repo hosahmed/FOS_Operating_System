@@ -294,7 +294,6 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 		//TODO: [PROJECT'24.MS3 - #01] [2] FAULT HANDLER II - Replacement
 		// Write your code here, remove the panic and write your code
 		//panic("page_fault_handler() Replacement is not implemented yet...!!");
-		//env_page_ws_print(faulted_env);
 		if(isPageReplacmentAlgorithmNchanceCLOCK())
 		{
 			bool normal = 0;
@@ -467,7 +466,6 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 				faulted_env->page_last_WS_element = LIST_NEXT(itEnd);
 			}
 		}
-		//env_page_ws_print(faulted_env);
 	}
 }
 

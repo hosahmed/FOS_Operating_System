@@ -485,18 +485,20 @@ void env_free(struct Env *e)
 		LIST_REMOVE(&(e->page_WS_list), element);
 
 		unmap_frame(e->env_page_directory, element->virtual_address);
-		get_page_table(e->env_page_directory, element->virtual_address, &ptr_page_table);
 
-		for (int j = 0; j < 1024; j++) {
-			if (ptr_page_table[j] != 0) {
-				empty = 0;
-				break;
+		if(!get_page_table(e->env_page_directory, element->virtual_address, &ptr_page_table))
+		{
+			for (int j = 0; j < 1024; j++) {
+				if (ptr_page_table[j] != 0) {
+					empty = 0;
+					break;
+				}
 			}
-		}
-		if (empty == 1) {
-			pd_clear_page_dir_entry(e->env_page_directory, (uint32) ptr_page_table);
-			kfree((void*)ptr_page_table);
-			e->env_page_directory[PDX(ptr_page_table)] = 0;
+			if (empty == 1) {
+				pd_clear_page_dir_entry(e->env_page_directory, (uint32) ptr_page_table);
+				kfree((void*)ptr_page_table);
+				e->env_page_directory[PDX(ptr_page_table)] = 0;
+			}
 		}
 
 		kfree(element);
@@ -549,47 +551,6 @@ void env_free(struct Env *e)
 	}
 	release_spinlock(&(AllShares.shareslock));
 
-	// free all child envs (if any)
-
-	uint32 newSize = LIST_SIZE(&ProcessQueues.env_new_queue);
-	uint32 exitSize = LIST_SIZE(&ProcessQueues.env_exit_queue);
-
-	for(uint32 i = 0 ; i < newSize; i++)
-	{
-		struct Env* cur = dequeue(&ProcessQueues.env_new_queue);
-		enqueue(&ProcessQueues.env_new_queue, cur);
-		if(cur->env_parent_id == e->env_id)
-		{
-			if(holding_spinlock(&(ProcessQueues.qlock)))
-			{
-				release_spinlock(&(ProcessQueues.qlock));
-			}
-			sched_kill_env(cur->env_id);
-			if(!holding_spinlock(&(ProcessQueues.qlock)))
-			{
-				acquire_spinlock(&(ProcessQueues.qlock));
-			}
-		}
-	}
-
-	for(uint32 i = 0 ; i < exitSize; i++)
-	{
-		struct Env* cur = dequeue(&ProcessQueues.env_exit_queue);
-		enqueue(&ProcessQueues.env_exit_queue, cur);
-		if(cur->env_parent_id == e->env_id)
-		{
-			if(holding_spinlock(&(ProcessQueues.qlock)))
-			{
-				release_spinlock(&(ProcessQueues.qlock));
-			}
-			sched_kill_env(cur->env_id);
-			if(!holding_spinlock(&(ProcessQueues.qlock)))
-			{
-				acquire_spinlock(&(ProcessQueues.qlock));
-			}
-		}
-	}
-
 	// [9] remove this program from the page file
 	/*(ALREADY DONE for you)*/
 	pf_free_env(e); /*(ALREADY DONE for you)*/ // (removes all of the program pages from the page file)
@@ -600,10 +561,6 @@ void env_free(struct Env *e)
 	free_environment(e); /*(ALREADY DONE for you)*/ // (frees the environment (returns it back to the free environment list))
 	/*========================*/
 
-	if(holding_spinlock(&(ProcessQueues.qlock)))
-	{
-		release_spinlock(&(ProcessQueues.qlock));
-	}
 }
 
 //============================

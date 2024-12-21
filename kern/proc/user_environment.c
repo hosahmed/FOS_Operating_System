@@ -505,11 +505,37 @@ void env_free(struct Env *e)
 	}
 
 	// free all the user heap pages and tables
+	// free all the semaphores and shared objects
+	//TODO [PROJECT'24.MS3 - BONUS#02] [EXIT ENV V2] - env_free
 
+	acquire_spinlock(&(AllShares.shareslock));
 	for(uint32 it = USER_HEAP_START; it < USER_HEAP_MAX; it += PAGE_SIZE)
 	{
+		struct Share* listIT = LIST_FIRST(&(AllShares.shares_list));
+		uint32 list_size = LIST_SIZE(&(AllShares.shares_list));
+		uint32* ptr_page_table_1 = NULL;
+		get_page_table(e->env_page_directory, it, &ptr_page_table_1);
+
+		for(int i = 0 ; i < list_size; i++)
+		{
+			if(get_frame_info(e->env_page_directory, it, &ptr_page_table_1) == listIT->framesStorage[0])
+			{
+				struct Share* tmp = listIT;
+				listIT = LIST_NEXT(listIT);
+				tmp->references--;
+				if(tmp->references == 0)
+				{
+					LIST_REMOVE(&(AllShares.shares_list), tmp);
+					kfree(tmp->framesStorage);
+					kfree(tmp);
+				}
+				break;
+			}
+			listIT = LIST_NEXT(listIT);
+		}
 		unmap_frame(e->env_page_directory, it);
 	}
+	release_spinlock(&(AllShares.shareslock));
 
 	for(uint32 it = USER_HEAP_START; it < USER_HEAP_MAX; it += PAGE_SIZE*1024)
 	{
@@ -521,35 +547,9 @@ void env_free(struct Env *e)
 
 	// free the user kernel stack and the page directory ptr
 
-	for(uint32 it = USTACKBOTTOM; it < USTACKTOP; it += PAGE_SIZE)
-	{
-		unmap_frame(e->env_page_directory, it);
-	}
-
 	delete_user_kern_stack(e);
 
 	kfree(e->env_page_directory);
-
-	//TODO [PROJECT'24.MS3 - BONUS#02] [EXIT ENV V2] - env_free
-
-	// free all the created semaphores and shared objects
-	acquire_spinlock(&(AllShares.shareslock));
-	struct Share* listIT = LIST_FIRST(&(AllShares.shares_list));
-	uint32 list_size = LIST_SIZE(&(AllShares.shares_list));
-	for(int i = 0 ; i < list_size; i++)
-	{
-		if(listIT->ownerID == e->env_id)
-		{
-			struct Share* tmp = listIT;
-			listIT = LIST_NEXT(listIT);
-			LIST_REMOVE(&(AllShares.shares_list), tmp);
-			kfree(tmp->framesStorage);
-			kfree(tmp);
-			continue;
-		}
-		listIT = LIST_NEXT(listIT);
-	}
-	release_spinlock(&(AllShares.shareslock));
 
 	// [9] remove this program from the page file
 	/*(ALREADY DONE for you)*/
@@ -560,7 +560,6 @@ void env_free(struct Env *e)
 	/*(ALREADY DONE for you)*/
 	free_environment(e); /*(ALREADY DONE for you)*/ // (frees the environment (returns it back to the free environment list))
 	/*========================*/
-
 }
 
 //============================

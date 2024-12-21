@@ -708,6 +708,14 @@ void env_set_priority(int envID, int priority)
 	struct Env* proc ;
 	envid2env(envID, &proc, 0);
 	acquire_spinlock(&(ProcessQueues.qlock));
+	if(priority < 0)
+	{
+		priority = 0;
+	}
+	else if(priority >= num_of_ready_queues)
+	{
+		priority = num_of_ready_queues-1;
+	}
 	proc->priority = priority;
 
 	if(proc->env_status == ENV_READY){
